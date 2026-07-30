@@ -758,12 +758,48 @@ memory.malloc_overflow:
 	pop eax
 	sub edi, eax
 	ret
+window.window_moves:
+	test byte[0x7404], 0x01
+	jz window.after_wm
+	pushad
+	movzx edx, word[0x7400]
+	shr edx, 3
+	mov bh, dl
+	movzx edx, word[0x7402]
+	shr edx, 3
+	mov bl, dl
+	sub bx, word[0x7406]
+	je window.after_wmpa
+	xchg bh, bl
+	mov ax, word[ecx]
+	sub ah, 2
+	mov word[0x7500], ax
+	mov ax, word[ecx+2]
+	mov word[0x7502], ax
+	add byte[ecx], bl
+	add byte[ecx+1], bh
+	add byte[ecx+2], bl
+	add byte[ecx+3], bh
+	push ebx
+	call window.update_whole_ptr
+	pop ebx
+	add byte[0x7500], bl
+	add byte[0x7501], bh
+	add byte[0x7502], bl
+	add byte[0x7503], bh
+	call window.update_whole_ptr
+window.after_wmpa:
+	popad
+	jmp window.after_wm
 window.mouse_update:
 	mov dx, word[0x7406]
 	pushad
 	call window.get_pid_by_coord
 	test ebp, ebp
 	jz window.set_pid_null
+	cmp byte[ecx], dl
+	jb window.window_moves
+window.after_wm:
 	mov eax, ebp
 	sub eax, 0x1ffc0
 	shr eax, 6
@@ -819,6 +855,25 @@ window.mouse_slend:
 window.set_pid_null:
 	mov byte[0x7405], 0
 	jmp window.after_null
+window.update_whole_ptr:
+	mov dx, word[0x7500]
+	xchg dh, dl
+window.uwptr_loop:
+	pushad
+	call window.updatetile
+	popad
+	inc dh
+	cmp dh, byte[0x7502]
+	jae window.uwptr_down
+	jmp window.uwptr_loop
+window.uwptr_down:
+	mov dh, byte[0x7500]
+	inc dl
+	cmp dl, byte[0x7503]
+	jae window.end_uwptr
+	jmp window.uwptr_loop
+window.end_uwptr:
+	ret
 window.service:
 	; AH=0 PTREDIT
 	; BH=NEW_X
@@ -1059,17 +1114,17 @@ window.get_pid_by_coord:
 	xor ebp, ebp
 window.get_pid_loop:
 	lodsd
-	mov ebx, dword[eax+0x30]
+	mov ecx, dword[eax+0x30]
 	mov edi, dword[eax+0x34]
 	mov dword[0x2100], edi
-	cmp dh, byte[ebx]
+	cmp dh, byte[ecx]
 	jb window.nextwindow_nad
-	cmp dh, byte[ebx+2]
+	cmp dh, byte[ecx+2]
 	jae window.nextwindow_nad
-	cmp dl, byte[ebx+3]
+	cmp dl, byte[ecx+3]
 	jae window.nextwindow_nad
 	add dl, 2
-	cmp dl, byte[ebx+1]
+	cmp dl, byte[ecx+1]
 	jb window.nextwindow
 	mov ebp, eax
 window.nextwindow:

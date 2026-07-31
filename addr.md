@@ -70,4 +70,5 @@ struct window {
 }
 
 # Statistics
-Bootloader Start -> Hello, World! 9.780978 ms
+Bootloader Start -> Hello, World!			9.780978 ms
+Bootloader Start -> Calculator GUI Drawn	49.946368 ms

@@ -85,8 +85,8 @@ boot.after_vesa:
 	mov ss, ax
 	mov esp, 0x7c00
 	rdtsc
-	mov dword[0x7900], edx
-	mov dword[0x7904], eax
+	mov dword[0x7900], eax
+	mov dword[0x7904], edx
 	mov dword[0x2000], 0x0000301b
 	mov dword[0x3000], 0x0000001b
 	mov dword[0x3004], 0x0000101b
@@ -138,8 +138,8 @@ dd 0
 dw 0xaa55
 boot.exception:
 	rdtsc
-	sub edx, dword[0x7900]
-	sub eax, dword[0x7904]
+	sub edx, dword[0x7904]
+	sub eax, dword[0x7900]
 	cli
 	hlt
 boot.no_vesa_err:
@@ -323,62 +323,7 @@ kernel.ps2_err:
 	cli
 	hlt
 kernel.test:
-	dw 1000000000000000b
-; bit 15 = Has a Window?
-	db 5, 5, 17, 25 ; X1, Y1, X2, Y2
-	dw kernel.test_data-kernel.test_name ; title
-	dw kernel.test_name-kernel.test
-	dw kernel.test_end-kernel.test_start ; code
-	dw kernel.test_start-kernel.test
-	dw kernel.test_start-kernel.test_data ; data
-	dw kernel.test_data-kernel.test
-	dw 0 ; rodata
-	dw 0
-kernel.test_name:
-	db "Calculator"
-kernel.test_data:
-	db "789*456+123-0.=/1234567890"
-kernel.test_start:
-	; args : DATA, RODATA
-	pop esi
-	mov dx, 0x0105
-kernel.test_loop:
-	pushad
-	mov ah, 0x00
-	mov ecx, 1
-	push edx
-	int 0x30
-	pop edx
-	sub edx, 0x0101
-	mov bx, 0x0102
-	mov ah, 0x01
-	int 0x30
-	popad
-	inc esi
-	add dh, 3
-	cmp dh, 0xd
-	jb kernel.test_loop
-	add dl, 0x04
-	mov dh, 1
-	cmp dl, 0x15
-	jb kernel.test_loop
-	push esi
-	mov si, kernel.test_button-kernel.test_start
-	mov ah, 0xff
-	int 0x30
-	pop esi
-	jmp $
-kernel.test_button:
-	mov edx, 0x0101
-	mov ah, 0x00
-	mov ecx, 10
-	int 0x30
-	mov edx, 0x0000
-	mov bx, 0x0a02
-	mov ah, 0x02
-	int 0x30
-	ret
-kernel.test_end:
+	incbin "Build/program"
 scheduler.run:
 	mov esi, 0x2002c
 scheduler.find_prog:
@@ -437,9 +382,7 @@ scheduler.yield:
 	mov al, byte[0x730b]
 	cmp byte[0x7405], al
 	jne scheduler.no_button_prog
-	movzx edi, al
-	shl edi, 6
-	add edi, 0x1ffc0
+	mov edi, dword[0x7320]
 	cmp word[edi+0x2e], 0
 	je scheduler.no_button_prog
 	sub dword[edi+0x24], 4
@@ -477,7 +420,9 @@ scheduler.find_space:
 	or byte[esi+0x2c], 0x80
 	mov dword[esi+0x28], 0x202
 	mov dword[esi+0x20], 0x10002000
-	mov dword[esi+0x24], 0x10000ff8
+	movzx eax, word[edx+22]
+	add dword[esi+0x20], eax
+	mov dword[esi+0x24], 0x10000ff4
 	mov dword[esi+0x38], 0
 	mov bx, si
 	shr bx, 6
@@ -699,10 +644,34 @@ ps2.x_underflow:
 ps2.keyboard:
 	pushad
 	in al, 0x60
+	mov bx, 0
+	cmp al, 0xe0
+	je ps2.anormal_key
+ps2.after_ak:
+	cmp al, 0xf0
+	je ps2.release_key
+ps2.after_rk:
+	add al, bl
+	movzx eax, al
+	cmp bh, 0x80
+	je ps2.write_alkey_rel
+	bts [0x7408], eax
+	jmp ps2.after_walkrel
+ps2.write_alkey_rel:
+	btc [0x7408], eax
+ps2.after_walkrel:
 	mov al, 0x20
 	out 0x20, al
 	popad
 	iretd
+ps2.anormal_key:
+	mov bl, 0x80
+	in al, 0x60
+	jmp ps2.after_ak
+ps2.release_key:
+	mov bh, 0x80
+	in al, 0x60
+	jmp ps2.after_rk
 memory.kmalloc:
 	mov edi, 0x10000
 	mov ecx, 0x10000
@@ -798,7 +767,7 @@ window.mouse_update:
 	test ebp, ebp
 	jz window.set_pid_null
 	cmp byte[ecx], dl
-	jb window.window_moves
+	jae window.window_moves
 window.after_wm:
 	mov eax, ebp
 	sub eax, 0x1ffc0
@@ -891,15 +860,28 @@ window.service:
 	je window.user_button
 	cmp ah, 2
 	je window.user_simple
+	cmp ah, 0xfe
+	je window.user_get_data
 	cmp ah, 0xff
 	je window.user_register
+	iretd
+window.user_get_data:
+	mov al, byte[0x730b]
+	cmp byte[0x7405], al
+	je window.user_cgt
+	mov al, byte[0x7404]
+	mov dx, word[0x7406]
+	mov edi, dword[0x7320]
+	mov edi, dword[edi+0x30]
+	sub dx, word[edi]
+	iretd
+window.user_cgt:
+	mov ah, 0
 	iretd
 window.get_data_prot:
 	mov ax, 0x10
 	mov es, ax
-	movzx edi, byte[0x730b]
-	shl edi, 6
-	add edi, 0x1ffc0
+	mov edi, dword[0x7320]
 	mov edi, dword[edi+0x30]
 	test edi, edi
 	jz window.user_wow
@@ -908,9 +890,7 @@ window.get_data_prot:
 	ret
 window.user_register:
 	; at ESI is offset from starting addr
-	movzx edi, byte[0x730b]
-	shl edi, 6
-	add edi, 0x1ffc0
+	mov edi, dword[0x7320]
 	mov word[edi+0x2e], si
 	iretd
 window.user_wow:

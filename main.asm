@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x020b
+	mov ax, 0x020c
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -149,7 +149,7 @@ boot.low_mem_err:
 	db "E.r.r.o.r.:. .L.o.w. .m.e.m.o.r.y."
 boot.low_mem_err_end:
 boot.gdttable:
-	dw boot.gdtend - boot.gdtdesc
+	dw boot.gdtend - boot.gdtdesc - 1
 	dd boot.gdtdesc
 boot.gdtdesc:
 	dq 0
@@ -163,8 +163,6 @@ times 1024 - ($ - $$) db 0
 section .kernel vstart=0xc0000000
 kernel.main:
 	call kernel.init
-	mov edx, kernel.test
-	call scheduler.create
 kernel.run:
 	call scheduler.run
 	jmp kernel.run
@@ -291,6 +289,24 @@ kernel.init:
 	mov dword[0x1164], 0xc0008e00
 	mov word[0x1162], 0x0008
 	mov word[0x1160], ps2.mouse
+	mov dword[0x1004], 0xc0008e00
+	mov word[0x1002], 0x0008
+	mov word[0x1000], kernel.div_by_0
+	mov dword[0x100c], 0xc0008e00
+	mov word[0x100a], 0x0008
+	mov word[0x1008], kernel.debug_exc
+	mov dword[0x1034], 0xc0008e00
+	mov word[0x1032], 0x0008
+	mov word[0x1030], kernel.undefined_oc
+	mov dword[0x1044], 0xc0008e00
+	mov word[0x1042], 0x0008
+	mov word[0x1040], kernel.double_fault
+	mov dword[0x106c], 0xc0008e00
+	mov word[0x106a], 0x0008
+	mov word[0x1068], kernel.general_pf
+	mov dword[0x1074], 0xc0008e00
+	mov word[0x1072], 0x0008
+	mov word[0x1070], kernel.page_fault
 	lidt [0x7300]
 	sti
 	; Setup TSS
@@ -322,10 +338,153 @@ kernel.ps2_pass2:
 kernel.ps2_err:
 	cli
 	hlt
-kernel.test:
-	incbin "Build/program"
+kernel.print_escr:
+	cli
+	push ecx
+	push esi
+	push eax
+	mov edi, 0xf0000000
+	mov ecx, 1280*1024
+	mov eax, 0x0000aa
+	rep stosd
+	mov edx, 0xffffff
+	mov esi, kernel.error_scr_msg1
+	mov edi, 0xf01e0700
+	mov ecx, 0xffffffff
+	call window.print
+	mov edi, 0xf01e0600 + 0x28000*1
+	call window.print
+	mov edi, 0xf01e0600 + 0x28000*2
+	call window.print
+	pop eax
+	mov dword[esi], eax
+	call window.print
+	call window.print
+	push edi
+	mov edi, esi
+	mov eax, dword[esp+4]
+	call kernel.convert_hex
+	pop edi
+	call window.print
+	pop esi
+	mov edi, 0xf01e0600 + 0x28000*3
+	call window.print
+	pop ecx
+	push edi
+	mov eax, ecx
+	mov edi, esi
+	call kernel.convert_hex
+	pop edi
+	call window.print
+	ret
+kernel.error_scr_msg1:
+	db "An error in the kernel has ocurred!", 0
+	db "Technical Information: ", 0
+	db 0, 0, 0, 0, 0, " at 0x", 0, "00000000", 0
+kernel.page_fault_r3:
+kernel.general_pf_r3:
+kernel.udopcode_r3:
+kernel.debug_r3:
+kernel.db0r3:
+	cli
+	hlt
+kernel.div_by_0:
+	test dword[esp+4], 0x03
+	jnz kernel.db0r3
+	mov ecx, eax
+	mov eax, "#DE"
+	mov esi, kernel.db0msg
+	call kernel.print_escr
+	cli
+	hlt
+kernel.db0msg:
+	db "Tried to divide 0x", 0, "00000000 between 0", 0
+kernel.debug_exc:
+	test dword[esp+4], 0x03
+	jnz kernel.debug_r3
+	mov ecx, dr6
+	mov eax, "#DB"
+	mov esi, kernel.debug_msg
+	call kernel.print_escr
+	cli
+	hlt
+kernel.debug_msg:
+	db "Debug Breakpoint CR6=0x", 0, "00000000", 0
+kernel.undefined_oc:
+	test dword[esp+4], 0x03
+	jnz kernel.udopcode_r3
+	mov edi, dword[esp]
+	mov ecx, dword[edi]
+	mov eax, "#UD"
+	mov esi, kernel.undef_oc_msg
+	call kernel.print_escr
+	cli
+	hlt
+kernel.undef_oc_msg:
+	db "Undefined Opcode (0x", 0, "00000000)", 0
+kernel.double_fault:
+	pop ecx
+	mov eax, "#DF"
+	mov esi, kernel.double_fault_msg
+	call kernel.print_escr
+	cli
+	hlt
+kernel.double_fault_msg:
+	db "A very fatal error... (ERR=", 0, "00000000)", 0
+kernel.general_pf:
+	test dword[esp+8], 0x03
+	jnz kernel.general_pf_r3
+	pop ecx
+	mov eax, "#GP"
+	mov esi, kernel.general_pf_msg
+	call kernel.print_escr
+	cli
+	hlt
+kernel.general_pf_msg:
+	db "Protection Barrier Broken with Segment 0x", 0, "00000000", 0
+kernel.page_fault:
+	test dword[esp+8], 0x03
+	jnz kernel.page_fault_r3
+	pop ecx
+	mov eax, "#PF"
+	mov esi, kernel.page_fault_msg
+	call kernel.print_escr
+	push edi
+	mov eax, cr2
+	mov edi, esi
+	call kernel.convert_hex
+	pop edi
+	call window.print
+	cli
+	hlt
+kernel.page_fault_msg:
+	db "Accessing Unmapped Memory with Flags 0x", 0, "00000000 at 0x", 0, "00000000", 0
+kernel.convert_hex:
+	mov ecx, 8
+kernel.hex_loop:
+	rol eax, 4
+	push eax
+	and al, 0x0f
+	cmp al, 10
+	jae kernel.hex_letter
+	add al, '0'
+	mov byte[edi], al
+kernel.after_hlcx:
+	inc edi
+	pop eax
+	loop kernel.hex_loop
+	ret
+kernel.hex_letter:
+	add al, 'A' - 10
+	mov byte[edi], al
+	jmp kernel.after_hlcx
+scheduler.exception:
+	mov al, byte[0xf000]
+	jmp $
 scheduler.run:
 	mov esi, 0x2002c
+	cmp byte[0x730a], 0
+	je scheduler.exception
 scheduler.find_prog:
 	lodsb
 	inc byte[0x730b]
@@ -1328,6 +1487,7 @@ window.ptr_loop:
 	add edi, ebp
 	loop window.ptr_loop
 	pop ecx
+	mov ecx, edx
 	shr ecx, 3
 	dec ecx
 	pop edi
@@ -1365,7 +1525,7 @@ window.print_floop:
 	mov ecx, 3
 window.print_susp:
 	mov dword[edi], edx
-	add edi, 4
+	add edi, 8
 	loop window.print_susp
 window.print_end:
 	ret

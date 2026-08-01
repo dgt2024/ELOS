@@ -5,6 +5,6 @@ i686-elf-ld -T "elos.ld" program.o -o program.elf
 rm program.elf program.o
 cd ..
 nasm -fbin main.asm -o main.img
-qemu-system-i386 -display cocoa,zoom-to-fit=on -full-screen \
+qemu-system-i386 -display cocoa,zoom-to-fit=on \
   -drive file=main.img,format=raw,if=ide,media=disk \
-  -no-reboot -no-shutdown -d int -D log.log
+  -no-reboot -no-shutdown -monitor stdio -d int -D log.log

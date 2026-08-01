@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x020c
+	mov ax, 0x020d
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -163,6 +163,8 @@ times 1024 - ($ - $$) db 0
 section .kernel vstart=0xc0000000
 kernel.main:
 	call kernel.init
+	mov edx, kernel.test
+	call scheduler.create
 kernel.run:
 	call scheduler.run
 	jmp kernel.run
@@ -298,9 +300,6 @@ kernel.init:
 	mov dword[0x1034], 0xc0008e00
 	mov word[0x1032], 0x0008
 	mov word[0x1030], kernel.undefined_oc
-	mov dword[0x1044], 0xc0008e00
-	mov word[0x1042], 0x0008
-	mov word[0x1040], kernel.double_fault
 	mov dword[0x106c], 0xc0008e00
 	mov word[0x106a], 0x0008
 	mov word[0x1068], kernel.general_pf
@@ -362,12 +361,24 @@ kernel.print_escr:
 	call window.print
 	push edi
 	mov edi, esi
-	mov eax, dword[esp+4]
+	mov eax, dword[esp+16]
+	call kernel.convert_hex
+	pop edi
+	call window.print
+	push edi
+	mov edi, esi
+	mov eax, dword[0x7904]
+	call kernel.convert_hex
+	pop edi
+	call window.print
+	push edi
+	mov edi, esi
+	mov eax, dword[0x7900]
 	call kernel.convert_hex
 	pop edi
 	call window.print
 	pop esi
-	mov edi, 0xf01e0600 + 0x28000*3
+	mov edi, 0xf01e0600 + 0x28000*4
 	call window.print
 	pop ecx
 	push edi
@@ -378,16 +389,22 @@ kernel.print_escr:
 	call window.print
 	ret
 kernel.error_scr_msg1:
-	db "An error in the kernel has ocurred!", 0
+	db "An error in the kernel has occurred!", 0
 	db "Technical Information: ", 0
-	db 0, 0, 0, 0, 0, " at 0x", 0, "00000000", 0
+	db 0, 0, 0, 0, 0, " at 0x", 0, "00000000; 0x", 0
+	db "00000000", 0, "00000000 ns after boot", 0
 kernel.page_fault_r3:
 kernel.general_pf_r3:
 kernel.udopcode_r3:
 kernel.debug_r3:
-kernel.db0r3:
 	cli
 	hlt
+kernel.db0r3:
+	mov al, byte[0x730b]
+	call scheduler.pkill
+	mov edx, kernel.exc_prog
+	call scheduler.create
+	jmp scheduler.yield_directly
 kernel.div_by_0:
 	test dword[esp+4], 0x03
 	jnz kernel.db0r3
@@ -422,15 +439,6 @@ kernel.undefined_oc:
 	hlt
 kernel.undef_oc_msg:
 	db "Undefined Opcode (0x", 0, "00000000)", 0
-kernel.double_fault:
-	pop ecx
-	mov eax, "#DF"
-	mov esi, kernel.double_fault_msg
-	call kernel.print_escr
-	cli
-	hlt
-kernel.double_fault_msg:
-	db "A very fatal error... (ERR=", 0, "00000000)", 0
 kernel.general_pf:
 	test dword[esp+8], 0x03
 	jnz kernel.general_pf_r3
@@ -478,13 +486,52 @@ kernel.hex_letter:
 	add al, 'A' - 10
 	mov byte[edi], al
 	jmp kernel.after_hlcx
-scheduler.exception:
-	mov al, byte[0xf000]
+kernel.exc_prog:
+	dw 1000000000000000b
+; bit 15 = Has a Window?
+	db 48, 56, 112, 74 ; X1, Y1, X2, Y2
+	dw kernel.exc_prog_data-kernel.exc_prog_name ; title
+	dw kernel.exc_prog_name-kernel.exc_prog
+	dw kernel.exc_prog_end-kernel.exc_prog_start ; code
+	dw kernel.exc_prog_start-kernel.exc_prog
+	dw kernel.exc_prog_start-kernel.exc_prog_data ; data
+	dw kernel.exc_prog_data-kernel.exc_prog
+	dw 0 ; rodata
+	dw 0
+	dw 0
+kernel.exc_prog_name:
+	db "Program Calculator has stopped working"
+kernel.exc_prog_data:
+	db "An error of type exception ocurred"
+kernel.exc_prog_start:
+	; args : 0, DATA, RODATA
+	pop esi
+	pop esi
+	mov ecx, kernel.exc_prog_start-kernel.exc_prog_data
+	mov ah, 0x00
+	int 0x30
 	jmp $
+kernel.exc_prog_end:
+kernel.test:
+	dw 1000000000000000b
+; bit 15 = Has a Window?
+	db 5, 5, 17, 25 ; X1, Y1, X2, Y2
+	dw kernel.test_start-kernel.test_name ; title
+	dw kernel.test_name-kernel.test
+	dw kernel.test_end-kernel.test_start ; code
+	dw kernel.test_start-kernel.test
+	dw 0, 0, 0, 0, 0
+kernel.test_name:
+	db "Calculator"
+kernel.test_start:
+	xor eax, eax
+	div ecx
+	jmp $
+kernel.test_end:
 scheduler.run:
 	mov esi, 0x2002c
 	cmp byte[0x730a], 0
-	je scheduler.exception
+	je scheduler.run
 scheduler.find_prog:
 	lodsb
 	inc byte[0x730b]
@@ -561,12 +608,51 @@ scheduler.no_button_prog:
 	out 0x20, al
 	jae scheduler.run_end
 	jmp scheduler.find_prog
+scheduler.yield_directly:
+	mov esp, 0x7bfc
+	mov esi, dword[0x7320]
+	mov al, byte[0x730a]
+	cmp byte[0x7324], al
+	jae scheduler.run_end
+	jmp scheduler.find_prog
 scheduler.yield_return:
 	push eax
 	mov al, 0x20
 	out 0x20, al
 	pop eax
 	iretd
+scheduler.pkill:
+	; kills AL
+	dec byte[0x730a]
+	movzx esi, eax
+	shl esi, 6
+	add esi, 0x1ffc0
+	and byte[esi+0x2c], 0x7f
+	push dword[0x2100]
+	mov ebx, dword[esi+0x34]
+	mov dword[0x2100], ebx
+	mov ebx, dword[esi+0x30]
+	mov ebx, dword[ebx]
+	mov dword[0x7500], ebx
+	sub byte[0x7501], 2
+	call memory.kfree
+	mov eax, esi
+	mov edi, 0x23ffc
+	mov ecx, 0x100
+	rep scasd
+	cmp dword[edi], eax
+	jne scheduler.pkill_skip_wnd
+	mov esi, edi
+	add esi, 4
+scheduler.pkill_move_wnd:
+	lodsd
+	stosd
+	test eax, eax
+	jnz scheduler.pkill_move_wnd
+	call window.update_whole_ptr
+scheduler.pkill_skip_wnd:
+	pop dword[0x2100]
+	ret
 scheduler.create:
 	inc byte[0x730a]
 	mov esi, 0x2001f
@@ -591,11 +677,16 @@ scheduler.find_space:
 	mov dword[esi+0x34], edi
 	or di, 0x1b
 	mov dword[0x90000], edi ; 0xa0000
+	invlpg [0xe0000000]
+	mov edi, 0xe0000000
+	mov ecx, 0x400
+	xor eax, eax
+	rep stosd
 	call memory.kmalloc ; Stack
 	or di, 0x1f
 	mov dword[0xe0000000], edi
-	invlpg [0xe0000000]
 	mov dword[0x90008], edi
+	invlpg [0xe0001000]
 	movzx ecx, word[edx+10]
 	test ecx, ecx
 	jz scheduler.end
@@ -831,6 +922,16 @@ ps2.release_key:
 	mov bh, 0x80
 	in al, 0x60
 	jmp ps2.after_rk
+memory.kfree:
+	mov edi, 0x10000
+	mov ecx, 0x10000
+memory.kfree_loop:
+	repne scasb
+	mov byte[edi-1], 0
+	jecxz memory.kfree_end
+	loop memory.kfree_loop
+memory.kfree_end:
+	ret
 memory.kmalloc:
 	mov edi, 0x10000
 	mov ecx, 0x10000
@@ -1253,6 +1354,8 @@ window.get_pid_by_coord:
 	xor ebp, ebp
 window.get_pid_loop:
 	lodsd
+	test eax, eax
+	jz window.get_pid_none
 	mov ecx, dword[eax+0x30]
 	mov edi, dword[eax+0x34]
 	mov dword[0x2100], edi
@@ -1270,8 +1373,8 @@ window.nextwindow:
 	sub dl, 2
 window.nextwindow_nad:
 	inc bl
-	cmp bl, byte[0x730a]
-	jb window.get_pid_loop
+	jmp window.get_pid_loop
+window.get_pid_none:
 	ret
 window.nexttile:
 	add esi, 0x40
@@ -1340,6 +1443,9 @@ window.titlebar:
 	mov al, 0
 	repne scasb
 	mov al, byte[edi]
+	cmp byte[edi-1], 0
+	je window.titlebar_clral
+window.after_tbcrlar:
 	pop edi
 	movzx ecx, dh
 	movzx edi, byte[edi+1]
@@ -1372,13 +1478,16 @@ window.titlebar_loop:
 	popad
 	pushad
 	add esi, 4
-	add edi, 1280*4*8+4
+	add edi, 1280*4*8+8
 	mov edx, 0xffffff
 	call window.nibble
 	popad
 window.notext:
 	pop edx
 	ret
+window.titlebar_clral:
+	mov al, 0
+	jmp window.after_tbcrlar
 window.symbol:
 	and al, 0x7f
 	movzx esi, al

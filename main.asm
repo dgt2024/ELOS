@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x020d
+	mov ax, 0x020f
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -169,6 +169,8 @@ kernel.run:
 	call scheduler.run
 	jmp kernel.run
 kernel.init:
+	; debug init
+	mov byte[0x7902], 'a'
 	; video init
 	mov edi, 0xf0000000
 	mov ecx, 1280*1024
@@ -367,13 +369,20 @@ kernel.print_escr:
 	call window.print
 	push edi
 	mov edi, esi
-	mov eax, dword[0x7904]
+	push edx
+	rdtsc
+	sub edx, dword[0x7904]
+	mov eax, edx
+	pop edx
 	call kernel.convert_hex
 	pop edi
 	call window.print
 	push edi
 	mov edi, esi
-	mov eax, dword[0x7900]
+	push edx
+	rdtsc
+	sub eax, dword[0x7900]
+	pop edx
 	call kernel.convert_hex
 	pop edi
 	call window.print
@@ -393,18 +402,34 @@ kernel.error_scr_msg1:
 	db "Technical Information: ", 0
 	db 0, 0, 0, 0, 0, " at 0x", 0, "00000000; 0x", 0
 	db "00000000", 0, "00000000 ns after boot", 0
-kernel.page_fault_r3:
-kernel.general_pf_r3:
-kernel.udopcode_r3:
-kernel.debug_r3:
-	cli
-	hlt
 kernel.db0r3:
-	mov al, byte[0x730b]
-	call scheduler.pkill
-	mov edx, kernel.exc_prog
-	call scheduler.create
-	jmp scheduler.yield_directly
+	mov esi, kernel.db0r3_msg
+	mov ecx, kernel.db0r3_msg_end-kernel.db0r3_msg
+	jmp kernel.exc_prog
+kernel.db0r3_msg:
+	db "The program attempted to divide by zero."
+kernel.db0r3_msg_end:
+kernel.udopcode_r3:
+	mov esi, kernel.udopcode_r3_msg
+	mov ecx, kernel.udopcode_r3_msg_end-kernel.udopcode_r3_msg
+	jmp kernel.exc_prog
+kernel.udopcode_r3_msg:
+	db "The program attempted to run an undefined opcode."
+kernel.udopcode_r3_msg_end:
+kernel.general_pf_r3:
+	mov esi, kernel.general_pf_r3_msg
+	mov ecx, kernel.general_pf_r3_msg_end-kernel.general_pf_r3_msg
+	jmp kernel.exc_prog
+kernel.general_pf_r3_msg:
+	db "The program attempted to make a protected action."
+kernel.general_pf_r3_msg_end:
+kernel.page_fault_r3:
+	mov esi, kernel.page_fault_r3_msg
+	mov ecx, kernel.page_fault_r3_msg_end-kernel.page_fault_r3_msg
+	jmp kernel.exc_prog
+kernel.page_fault_r3_msg:
+	db "The program attempted to access protected memory (segfault)."
+kernel.page_fault_r3_msg_end:
 kernel.div_by_0:
 	test dword[esp+4], 0x03
 	jnz kernel.db0r3
@@ -416,17 +441,26 @@ kernel.div_by_0:
 	hlt
 kernel.db0msg:
 	db "Tried to divide 0x", 0, "00000000 between 0", 0
+kernel.debug_inc_letter:
+	mov byte[0x7902], 'a'
+	popad
+	or dword[esp+8], 0x100
+	iretd
 kernel.debug_exc:
-	test dword[esp+4], 0x03
-	jnz kernel.debug_r3
-	mov ecx, dr6
-	mov eax, "#DB"
-	mov esi, kernel.debug_msg
-	call kernel.print_escr
-	cli
-	hlt
-kernel.debug_msg:
-	db "Debug Breakpoint CR6=0x", 0, "00000000", 0
+	pushad
+kernel.debug_poll:
+	mov dx, 0x3f8
+	in al, dx
+	cmp al, byte[0x7902]
+	jne kernel.debug_poll
+	inc byte[0x7902]
+	cmp al, 'z'
+	je kernel.debug_inc_letter
+	popad
+	xor eax, eax
+	mov dr7, eax
+	or dword[esp+8], 0x100
+	iretd
 kernel.undefined_oc:
 	test dword[esp+4], 0x03
 	jnz kernel.udopcode_r3
@@ -467,6 +501,101 @@ kernel.page_fault:
 	hlt
 kernel.page_fault_msg:
 	db "Accessing Unmapped Memory with Flags 0x", 0, "00000000 at 0x", 0, "00000000", 0
+kernel.exc_prog:
+	push esi
+	push ecx
+	mov al, byte[0x730b]
+	call scheduler.pkill
+	mov edi, 0x7500
+	mov esi, kernel.exc_progn1
+	mov ecx, kernel.exc_progn1_end-kernel.exc_progn1
+	rep movsb
+	mov ecx, 0xffffffff
+	mov esi, dword[0x7320]
+	mov esi, dword[esi+0x30]
+	add esi, 4
+	xor edx, edx
+kernel.exc_prog_nloop:
+	lodsb
+	stosb
+	inc edx
+	cmp al, 0
+	jne kernel.exc_prog_nloop
+	mov esi, kernel.exc_progn2
+	mov ecx, kernel.exc_progn2_end-kernel.exc_progn2
+	dec edi
+	lea edx, [edx+ecx-1]
+	rep movsb
+	mov word[0x7506], dx
+	add edx, kernel.exc_progn1_end-kernel.exc_progn1
+	mov word[0x7510], dx
+	pop ecx
+	pop esi
+	mov ax, cx
+	stosw
+	add ax, 2
+	mov word[0x750e], ax
+	rep movsb
+	mov edx, 0x7500
+	call scheduler.create
+	jmp scheduler.yield_directly
+kernel.exc_progn1:
+	dw 1000000000000000b
+	db 48, 56, 112, 73
+	dw 0 ; size of title dependent
+	dw kernel.exc_progn1_end-kernel.exc_progn1
+	dw kernel.exc_progn1_end-kernel.exc_progn1_cs
+	dw kernel.exc_progn1_cs-kernel.exc_progn1
+	dw 0 ; size of data dependent
+	dw 0 ; data offset dependent
+	dw 0, 0, 0
+kernel.exc_progn1_cs:
+	pop esi
+	pop esi
+	mov cx, word[esi]
+	push esi
+	add esi, 2
+	mov dx, 0x0202
+	mov ah, 0x00
+	int 0x30
+	mov bx, 0x0402
+	mov dx, 0x1d05
+	mov ah, 0x01
+	int 0x30
+	pop esi
+	mov word[esi], "OK"
+	mov ecx, 2
+	mov dx, 0x1f06
+	mov ah, 0x00
+	int 0x30
+	mov esi, kernel.exc_progn1_btn-kernel.exc_progn1_cs
+	mov ah, 0xff
+	int 0x30
+	jmp $
+kernel.exc_progn1_btn:
+	mov ah, 0xfe
+	int 0x30
+	test al, 0x01
+	jz kernel.exc_progn1_return
+	cmp dh, 0x1d
+	jb kernel.exc_progn1_return
+	cmp dl, 0x05
+	jb kernel.exc_progn1_return
+	cmp dh, 0x23
+	ja kernel.exc_progn1_return
+	cmp dl, 0x09
+	ja kernel.exc_progn1_return
+	mov ah, 0xfd
+	int 0x30
+kernel.exc_progn1_return:
+	mov esi, kernel.exc_progn1_btn-kernel.exc_progn1_cs
+	mov ah, 0xff
+	int 0x30
+	ret
+kernel.exc_progn1_end:
+kernel.exc_progn2:
+	db " has stopped working"
+kernel.exc_progn2_end:
 kernel.convert_hex:
 	mov ecx, 8
 kernel.hex_loop:
@@ -486,52 +615,53 @@ kernel.hex_letter:
 	add al, 'A' - 10
 	mov byte[edi], al
 	jmp kernel.after_hlcx
-kernel.exc_prog:
-	dw 1000000000000000b
-; bit 15 = Has a Window?
-	db 48, 56, 112, 74 ; X1, Y1, X2, Y2
-	dw kernel.exc_prog_data-kernel.exc_prog_name ; title
-	dw kernel.exc_prog_name-kernel.exc_prog
-	dw kernel.exc_prog_end-kernel.exc_prog_start ; code
-	dw kernel.exc_prog_start-kernel.exc_prog
-	dw kernel.exc_prog_start-kernel.exc_prog_data ; data
-	dw kernel.exc_prog_data-kernel.exc_prog
-	dw 0 ; rodata
-	dw 0
-	dw 0
-kernel.exc_prog_name:
-	db "Program Calculator has stopped working"
-kernel.exc_prog_data:
-	db "An error of type exception ocurred"
-kernel.exc_prog_start:
-	; args : 0, DATA, RODATA
-	pop esi
-	pop esi
-	mov ecx, kernel.exc_prog_start-kernel.exc_prog_data
-	mov ah, 0x00
-	int 0x30
-	jmp $
-kernel.exc_prog_end:
 kernel.test:
 	dw 1000000000000000b
-; bit 15 = Has a Window?
-	db 5, 5, 17, 25 ; X1, Y1, X2, Y2
-	dw kernel.test_start-kernel.test_name ; title
+	db 0, 0, 17, 25 ; X1, Y1, X2, Y2
+	dw kernel.test_data-kernel.test_name ; title
 	dw kernel.test_name-kernel.test
 	dw kernel.test_end-kernel.test_start ; code
 	dw kernel.test_start-kernel.test
-	dw 0, 0, 0, 0, 0
+	dw kernel.test_start-kernel.test_data ; data
+	dw kernel.test_data-kernel.test
+	dw 0 ; rodata
+	dw 0
+	dw 0
 kernel.test_name:
 	db "Calculator"
+kernel.test_data:
+	db "789*456+123-0C=/          "
 kernel.test_start:
-	xor eax, eax
-	div ecx
+	; args : DATA, RODATA
+	mov ah, 0x03
+	mov al, 0x94
+	mov dx, 0x0000
+	int 0x30
 	jmp $
 kernel.test_end:
+debug.msg:
+	db "00000000", 0
+debug.print:
+	pushad
+	mov edi, debug.msg
+	call kernel.convert_hex
+	mov edi, 0xf0000000
+	mov ecx, 1280*4*4
+	mov eax, 0x00ffff
+	rep stosd
+	xor edx, edx
+	mov esi, debug.msg
+	mov edi, 0xf0002808
+	mov ecx, 0xffffffff
+	call window.print
+	popad
+	ret
 scheduler.run:
+	sti
 	mov esi, 0x2002c
 	cmp byte[0x730a], 0
 	je scheduler.run
+	cli
 scheduler.find_prog:
 	lodsb
 	inc byte[0x730b]
@@ -549,7 +679,6 @@ scheduler.find_prog:
 	mov dword[0x7318], eax
 	mov dword[0x731c], 0x23
 	mov eax, dword[esi+0x34]
-	or eax, 0x1f
 	mov dword[0x2100], eax
 	mov dword[0x7320], esi
 	mov ax, 0x23
@@ -591,6 +720,8 @@ scheduler.yield:
 	mov edi, dword[0x7320]
 	cmp word[edi+0x2e], 0
 	je scheduler.no_button_prog
+	test byte[0x7404], 7
+	jz scheduler.no_button_prog
 	sub dword[edi+0x24], 4
 	mov eax, dword[edi+0x24]
 	mov ebx, dword[edi+0x20]
@@ -824,9 +955,15 @@ scheduler.cut_code:
 	popad
 	jmp scheduler.after_code
 ps2.wait_for_input:
+	mov ecx, 0x80
+ps2.poll:
 	in al, 0x64
 	test al, 1
-	jz ps2.wait_for_input
+	jnz ps2.poll_end
+	loop ps2.poll
+	pop eax
+	jmp ps2.skip
+ps2.poll_end:
 	ret
 ps2.mouse:
 	cli
@@ -836,6 +973,8 @@ ps2.mouse:
 	mov ax, 0x10
 	mov es, ax
 	mov ds, ax
+	mov al, byte[0x7404]
+	mov byte[0x7428], al
 	movzx eax, word[0x7400]
 	shr eax, 3
 	mov byte[0x7407], al
@@ -860,18 +999,15 @@ ps2.after_xflow:
 	call ps2.wait_for_input
 	in al, 0x60
 	movsx ax, al
-	sub word[0x7402], ax
-	cmp word[0x7402], 16
+	neg ax
+	add word[0x7402], ax
+	cmp word[0x7402], 32
 	jb ps2.y_underflow
 	cmp word[0x7402], 1024
 	ja ps2.y_overflow
 ps2.after_yflow:
 	call window.mouse_update
 ps2.skip:
-	in al, 0x60
-	in al, 0x64
-	test al, 1
-	jnz ps2.skip
 	pop ds
 	pop es
 	mov al, 0x20
@@ -883,7 +1019,7 @@ ps2.y_overflow:
 	mov word[0x7402], 1024
 	jmp ps2.after_yflow
 ps2.y_underflow:
-	mov word[0x7402], 16
+	mov word[0x7402], 32
 	jmp ps2.after_yflow
 ps2.x_overflow:
 	mov word[0x7400], 0
@@ -892,6 +1028,7 @@ ps2.x_underflow:
 	mov word[0x7400], 1279
 	jmp ps2.after_xflow
 ps2.keyboard:
+	cli
 	pushad
 	in al, 0x60
 	mov bx, 0
@@ -988,25 +1125,28 @@ memory.malloc_overflow:
 	sub edi, eax
 	ret
 window.window_moves:
-	test byte[0x7404], 0x01
-	jz window.after_wm
 	pushad
-	movzx edx, word[0x7400]
-	shr edx, 3
-	mov bh, dl
-	movzx edx, word[0x7402]
-	shr edx, 3
-	mov bl, dl
-	sub bx, word[0x7406]
+	push dword[0x2100]
+	cmp byte[0x7429], 0
 	je window.after_wmpa
+	movzx edi, byte[0x7429]
+	shl edi, 6
+	add edi, 0x1ffc0
+	mov eax, dword[edi+0x34]
+	mov dword[0x2100], eax
+	mov ecx, dword[edi+0x30]
+	mov bx, word[0x7406]
+	sub bx, word[0x742a]
 	xchg bh, bl
-	mov ax, word[ecx]
-	sub ah, 2
-	mov word[0x7500], ax
-	mov ax, word[ecx+2]
-	mov word[0x7502], ax
+	mov eax, dword[ecx]
+	mov dword[0x7500], eax
+	sub byte[0x7501], 2
 	add byte[ecx], bl
+	js window.wm_x_underflow
+window.after_wmxuf:
 	add byte[ecx+1], bh
+	js window.wm_y_underflow
+window.after_wmyuf:
 	add byte[ecx+2], bl
 	add byte[ecx+3], bh
 	push ebx
@@ -1018,21 +1158,41 @@ window.window_moves:
 	add byte[0x7503], bh
 	call window.update_whole_ptr
 window.after_wmpa:
+	pop dword[0x2100]
 	popad
 	jmp window.after_wm
+window.wm_x_underflow:
+	sub bl, byte[ecx]
+	mov byte[ecx], 0
+	jmp window.after_wmxuf
+window.wm_y_underflow:
+	sub bh, byte[ecx+1]
+	mov byte[ecx+1], 0
+	jmp window.after_wmyuf
+window.save_for_wm:
+	mov byte[0x7429], al
+	mov ax, word[0x7406]
+	mov word[0x742a], ax
+	jmp window.after_null
 window.mouse_update:
 	mov dx, word[0x7406]
 	pushad
+	test byte[0x7404], 0x01
+	jnz window.after_wm
+	test byte[0x7428], 0x01
+	jnz window.window_moves
+window.after_wm:
 	call window.get_pid_by_coord
 	test ebp, ebp
 	jz window.set_pid_null
-	cmp byte[ecx], dl
-	jae window.window_moves
-window.after_wm:
 	mov eax, ebp
 	sub eax, 0x1ffc0
 	shr eax, 6
 	mov byte[0x7405], al
+	test byte[0x7404], 0x01
+	jz window.after_null
+	test byte[0x7428], 0x01
+	jz window.save_for_wm
 window.after_null:
 	popad
 	sub dl, 2
@@ -1082,6 +1242,12 @@ window.mouse_slend:
 	loop window.mouse_loop
 	ret
 window.set_pid_null:
+	test byte[0x7404], 0x01
+	jz window.after_pid_null
+	test byte[0x7428], 0x01
+	jnz window.after_pid_null
+	mov byte[0x7429], 0
+window.after_pid_null:
 	mov byte[0x7405], 0
 	jmp window.after_null
 window.update_whole_ptr:
@@ -1120,20 +1286,43 @@ window.service:
 	je window.user_button
 	cmp ah, 2
 	je window.user_simple
+	cmp ah, 3
+	je window.user_symbol
+	cmp ah, 0xfc
+	je scheduler.yield
+	cmp ah, 0xfd
+	je window.user_end
 	cmp ah, 0xfe
 	je window.user_get_data
 	cmp ah, 0xff
 	je window.user_register
 	iretd
+window.user_end:
+	mov ax, 0x10
+	mov es, ax
+	mov ds, ax
+	mov al, byte[0x730b]
+	call scheduler.pkill
+	jmp scheduler.yield_directly
 window.user_get_data:
+	mov ax, 0x10
+	mov es, ax
+	mov ds, ax
 	mov al, byte[0x730b]
 	cmp byte[0x7405], al
-	je window.user_cgt
+	jne window.user_cgt
+	mov ah, 0x01
 	mov al, byte[0x7404]
 	mov dx, word[0x7406]
 	mov edi, dword[0x7320]
 	mov edi, dword[edi+0x30]
-	sub dx, word[edi]
+	sub dh, byte[edi]
+	sub dl, byte[edi+1]
+	push eax
+	mov ax, 0x23
+	mov es, ax
+	mov ds, ax
+	pop eax
 	iretd
 window.user_cgt:
 	mov ah, 0
@@ -1290,6 +1479,38 @@ window.double:
 	popad
 	pop dword[0x2100]
 	ret
+window.user_symbol:
+	push eax
+	call window.get_data_prot
+	mov cx, bx
+	mov ax, word[edi]
+	xchg ah, al
+	push eax
+	push edx
+	mov bx, word[edi+2]
+	xchg bh, bl
+	sub bh, ah
+	sub bl, al
+	mov al, bh
+	mul dl
+	movzx dx, dh
+	add ax, dx
+	movzx eax, ax
+	add edi, 4
+	push ecx
+	push eax
+	mov ecx, 0xffffffff
+	mov al, 0
+	repne scasb
+	pop eax
+	pop ecx
+	add edi, eax
+	pop edx
+	pop eax
+	add dx, ax
+	pop eax
+	call window.single
+	iretd
 window.user_print:
 	call window.get_data_prot
 	mov ax, word[edi]
@@ -1786,6 +2007,60 @@ window.symbols_font:
 	db 00000000b
 	db 00000000b
 	db 00000000b
+
+	db 01111110b
+	db 01000010b
+	db 01000010b
+	db 01000010b
+	db 01000010b
+	db 01000010b
+	db 01000010b
+	db 01111110b
+
+	db 01111110b
+	db 01000010b
+	db 01011010b
+	db 01011010b
+	db 01011010b
+	db 01011010b
+	db 01000010b
+	db 01111110b
+
+	db 00011000b
+	db 00111100b
+	db 01111110b
+	db 11111111b
+	db 00011000b
+	db 00011000b
+	db 00011000b
+	db 00011000b
+
+	db 00001000b
+	db 00001100b
+	db 00001110b
+	db 11111111b
+	db 11111111b
+	db 00001110b
+	db 00001100b
+	db 00001000b
+
+	db 00010000b
+	db 00110000b
+	db 01110000b
+	db 11111111b
+	db 11111111b
+	db 01110000b
+	db 00110000b
+	db 00010000b
+
+	db 00011000b
+	db 00011000b
+	db 00011000b
+	db 00011000b
+	db 11111111b
+	db 01111110b
+	db 00111100b
+	db 00011000b
 
 window.font:
 	dd 000000000000000000000000000000b

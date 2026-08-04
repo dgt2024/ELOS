@@ -29,8 +29,12 @@ User content -> 0xb0000
 0x7405 -> Current Flagged Program
 0x7406 -> mouse coords
 0x7408 -> Keyboard
+0x7428 -> Mouse last btn
+0x7429 -> Mouse last process
+0x742a -> mouse coords before click
 0x7500 -> kernel IPC
 0x7900 -> ldtsc
+0x7902 -> letter needed
 0x7b00 -> Interrupt Stack
 0x7c00 -> Kernel Stack
 0x7228 -> Address of VESA LFB

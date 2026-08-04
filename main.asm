@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x020f
+	mov ax, 0x0210
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -163,8 +163,6 @@ times 1024 - ($ - $$) db 0
 section .kernel vstart=0xc0000000
 kernel.main:
 	call kernel.init
-	mov edx, kernel.test
-	call scheduler.create
 kernel.run:
 	call scheduler.run
 	jmp kernel.run
@@ -173,7 +171,10 @@ kernel.init:
 	mov byte[0x7902], 'a'
 	; video init
 	mov edi, 0xf0000000
-	mov ecx, 1280*1024
+	mov ecx, 1280*16
+	mov eax, 0x888888
+	rep stosd
+	mov ecx, 1280*(1024-16)
 	mov eax, 0xffff
 	rep stosd
 	; memory init
@@ -615,49 +616,90 @@ kernel.hex_letter:
 	add al, 'A' - 10
 	mov byte[edi], al
 	jmp kernel.after_hlcx
-kernel.test:
+kernel.winver:
 	dw 1000000000000000b
-	db 0, 0, 17, 25 ; X1, Y1, X2, Y2
-	dw kernel.test_data-kernel.test_name ; title
-	dw kernel.test_name-kernel.test
-	dw kernel.test_end-kernel.test_start ; code
-	dw kernel.test_start-kernel.test
-	dw kernel.test_start-kernel.test_data ; data
-	dw kernel.test_data-kernel.test
-	dw 0 ; rodata
-	dw 0
-	dw 0
-kernel.test_name:
-	db "Calculator"
-kernel.test_data:
-	db "789*456+123-0C=/          "
-kernel.test_start:
-	; args : DATA, RODATA
-	mov ah, 0x03
-	mov al, 0x94
-	mov dx, 0x0000
+	db 10, 10, 55, 35
+	dw kernel.winver_data-kernel.winver_title
+	dw kernel.winver_title-kernel.winver
+	dw kernel.winver_end-kernel.winver_text
+	dw kernel.winver_text-kernel.winver
+	dw kernel.winver_text-kernel.winver_data
+	dw kernel.winver_data-kernel.winver
+	dw 0, 0, 0
+kernel.winver_title:
+	db "About ELOS6"
+kernel.winver_data:
+	db "ELOS6"
+	db "Enhanced Lightweight OS"
+	db "Version: 6.0"
+	db "Build: 2026.08.04"
+	db "Architecture: IA-32"
+	db "Copyright 2025-2026 @dgt2024"
+	db "OK"
+kernel.winver_text:
+	pop esi
+	pop esi
+	mov ah, 0x00
+	mov dx, 0x1301
+	mov ecx, 5
 	int 0x30
+	mov ah, 0x00
+	mov dx, 0x0a03
+	mov ecx, 23
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x0106
+	mov ecx, 12
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x0108
+	mov ecx, 17
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x010a
+	mov ecx, 19
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x010e
+	mov ecx, 28
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x1512
+	mov ecx, 2
+	int 0x30
+	mov ah, 0x01
+	mov dx, 0x1311
+	mov bx, 0x0402
+	int 0x30
+	call kernel.winver_reg
 	jmp $
-kernel.test_end:
-debug.msg:
-	db "00000000", 0
-debug.print:
-	pushad
-	mov edi, debug.msg
-	call kernel.convert_hex
-	mov edi, 0xf0000000
-	mov ecx, 1280*4*4
-	mov eax, 0x00ffff
-	rep stosd
-	xor edx, edx
-	mov esi, debug.msg
-	mov edi, 0xf0002808
-	mov ecx, 0xffffffff
-	call window.print
-	popad
+kernel.winver_reg:
+	push esi
+	mov ah, 0xff
+	mov si, kernel.winver_btn-kernel.winver_text
+	int 0x30
+	pop esi
 	ret
+kernel.winver_btn:
+	mov ah, 0xfe
+	int 0x30
+	test al, 0x01
+	jz kernel.winver_nook
+	cmp dh, 0x13
+	jb kernel.winver_nook
+	cmp dl, 0x11
+	jb kernel.winver_nook
+	cmp dh, 0x19
+	ja kernel.winver_nook
+	cmp dl, 0x15
+	ja kernel.winver_nook
+	mov ah, 0xfd
+	int 0x30
+kernel.winver_nook:
+	call kernel.winver_reg
+	ret
+kernel.winver_end:
 scheduler.run:
-	sti
 	mov esi, 0x2002c
 	cmp byte[0x730a], 0
 	je scheduler.run
@@ -691,10 +733,12 @@ scheduler.find_prog:
 scheduler.run_end:
 	mov byte[0x730b], 0
 	mov byte[0x7324], 0
+	sti
 	ret
 scheduler.timer:
 	cli
 	inc word[0x7325]
+	call window.check_time
 scheduler.yield:
 	cmp byte[0x730b], 0
 	je scheduler.yield_return
@@ -763,6 +807,8 @@ scheduler.pkill:
 	mov ebx, dword[esi+0x34]
 	mov dword[0x2100], ebx
 	mov ebx, dword[esi+0x30]
+	test ebx, ebx
+	jz scheduler.pkill_skip_wnd
 	mov ebx, dword[ebx]
 	mov dword[0x7500], ebx
 	sub byte[0x7501], 2
@@ -1001,8 +1047,7 @@ ps2.after_xflow:
 	movsx ax, al
 	neg ax
 	add word[0x7402], ax
-	cmp word[0x7402], 32
-	jb ps2.y_underflow
+	jo ps2.y_underflow
 	cmp word[0x7402], 1024
 	ja ps2.y_overflow
 ps2.after_yflow:
@@ -1019,7 +1064,7 @@ ps2.y_overflow:
 	mov word[0x7402], 1024
 	jmp ps2.after_yflow
 ps2.y_underflow:
-	mov word[0x7402], 32
+	mov word[0x7402], 0
 	jmp ps2.after_yflow
 ps2.x_overflow:
 	mov word[0x7400], 0
@@ -1047,6 +1092,21 @@ ps2.after_rk:
 ps2.write_alkey_rel:
 	btc [0x7408], eax
 ps2.after_walkrel:
+	mov eax, 0x11
+	bt [0x7408], eax
+	jnc ps2.no_end_task
+	mov eax, 0x0c
+	bt [0x7408], eax
+	jnc ps2.no_end_task
+	cmp byte[0x7405], 0
+	je ps2.no_end_task
+	mov al, byte[0x7405]
+	mov byte[0x7405], 0
+	call scheduler.pkill
+	mov al, 0x20
+	out 0x20, al
+	jmp scheduler.yield_directly
+ps2.no_end_task:
 	mov al, 0x20
 	out 0x20, al
 	popad
@@ -1124,6 +1184,91 @@ memory.malloc_overflow:
 	pop eax
 	sub edi, eax
 	ret
+window.check_time:
+	mov dword[0x7500], esp
+	mov esp, 0x7b80
+	pushad
+	mov ax, word[0x7325]
+	test ax, 0xff
+	jz window.render_time
+	popad
+	mov esp, dword[0x7500]
+	ret
+window.time:
+	db " | ", 0, "00000000 | ", 0, "00000000 | ELOS6 |", 0
+window.render_time:
+	; edx = RGB Color
+	; esi = Char
+	; edi = Position
+	; ecx = Max Chars
+	mov edi, 0xf0000000
+	mov ecx, 1280*16
+	mov eax, 0x888888
+	rep stosd
+	mov ecx, 0xffffffff
+	mov esi, window.time
+	mov edi, 0xf0002808
+	mov edx, 0xffffff
+	call window.print
+	push edi
+	xor edx, edx
+	mov al, 0x0b
+	out 0x70, al
+	in al, 0x71
+	and al, 0xfb
+	mov ah, al
+	mov al, 0x0b
+	out 0x70, al
+	mov al, ah
+	out 0x71, al
+	mov al, 0x04
+	out 0x70, al
+	in al, 0x71
+	mov dl, al
+	shl edx, 12
+	mov al, 0x02
+	out 0x70, al
+	in al, 0x71
+	mov dl, al
+	shl edx, 12
+	mov al, 0x00
+	out 0x70, al
+	in al, 0x71
+	mov dl, al
+	mov eax, edx
+	mov edi, esi
+	call kernel.convert_hex
+	pop edi
+	mov byte[esi+2], ':'
+	mov byte[esi+5], ':'
+	mov edx, 0xffffff
+	call window.print
+	push edi
+	mov al, 0x07
+	out 0x70, al
+	in al, 0x71
+	mov dl, al
+	shl edx, 12
+	mov al, 0x08
+	out 0x70, al
+	in al, 0x71
+	mov dl, al
+	shl edx, 12
+	mov al, 0x09
+	out 0x70, al
+	in al, 0x71
+	mov dl, al
+	mov eax, edx
+	mov edi, esi
+	call kernel.convert_hex
+	pop edi
+	mov byte[esi+2], '/'
+	mov byte[esi+5], '/'
+	mov edx, 0xffffff
+	call window.print
+	popad
+	mov esp, dword[0x7500]
+	ret
 window.window_moves:
 	pushad
 	push dword[0x2100]
@@ -1174,11 +1319,23 @@ window.save_for_wm:
 	mov ax, word[0x7406]
 	mov word[0x742a], ax
 	jmp window.after_null
+window.check_bar:
+	cmp dl, 0x02
+	jae window.after_wm
+	cmp dh, 24
+	jb window.after_wm
+	cmp dh, 30
+	ja window.after_wm
+	pushad
+	mov edx, kernel.winver
+	call scheduler.create
+	popad
+	jmp window.after_wm
 window.mouse_update:
 	mov dx, word[0x7406]
 	pushad
 	test byte[0x7404], 0x01
-	jnz window.after_wm
+	jnz window.check_bar
 	test byte[0x7428], 0x01
 	jnz window.window_moves
 window.after_wm:
@@ -1726,15 +1883,22 @@ window.symbol:
 	mov es, ax
 	mov ds, ax
 	ret
+window.taskbar:
+	mov eax, 0x888888
+	jmp window.after_taskbar
 window.no_wnd:
+	add dl, 2
+	cmp dl, 2
+	mov eax, 0x00ffff
+	jb window.taskbar
+window.after_taskbar:
 	movzx edi, dl
 	mul edi, 1280*8*4
 	movzx edx, dh
 	shl edx, 5
 	add edi, edx
-	add edi, 0xf0014000
+	add edi, 0xf0000000
 	mov ecx, 8
-	mov eax, 0x00ffff
 window.nownd_loop:
 	mov edx, ecx
 	mov ecx, 8
@@ -2101,7 +2265,7 @@ window.font:
 	dd 001001111100000000000000000000b ; 1
 	dd 011101000100010001000100010000b
 	dd 100001111100000000000000000000b ; 2
-	dd 011101000100001011110000100001b
+	dd 011101000100001001100000100001b
 	dd 100010111000000000000000000000b ; 3
 	dd 001010100110001111110000100001b
 	dd 000010000100000000000000000000b ; 4
@@ -2198,8 +2362,8 @@ window.font:
 	dd 100010111100000000000000000000b ; a
 	dd 000001000010000111101000110001b
 	dd 100010111000000000000000000000b ; b
-	dd 000000000000000011101000110000b
-	dd 100010111000000000000000000000b ; c
+	dd 000000000000000011111000010000b
+	dd 100000111100000000000000000000b ; c
 	dd 000000000100001011111000110001b
 	dd 100010111100000000000000000000b ; d
 	dd 000000000000000011101000111110b

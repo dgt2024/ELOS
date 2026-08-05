@@ -133,8 +133,9 @@ boot.idtloop:
 	mov dword[0x7302], 0x1000
 	lidt [0x7300]
 	ret
-times 506 - ($ - $$) db 0
-dd 0
+times 502 - ($ - $$) db 0
+dd 0x00000011
+dd disk.boot_end-disk.boot_start
 dw 0xaa55
 boot.exception:
 	rdtsc
@@ -616,89 +617,6 @@ kernel.hex_letter:
 	add al, 'A' - 10
 	mov byte[edi], al
 	jmp kernel.after_hlcx
-kernel.winver:
-	dw 1000000000000000b
-	db 10, 10, 55, 35
-	dw kernel.winver_data-kernel.winver_title
-	dw kernel.winver_title-kernel.winver
-	dw kernel.winver_end-kernel.winver_text
-	dw kernel.winver_text-kernel.winver
-	dw kernel.winver_text-kernel.winver_data
-	dw kernel.winver_data-kernel.winver
-	dw 0, 0, 0
-kernel.winver_title:
-	db "About ELOS6"
-kernel.winver_data:
-	db "ELOS6"
-	db "Enhanced Lightweight OS"
-	db "Version: 6.0"
-	db "Build: 2026.08.04"
-	db "Architecture: IA-32"
-	db "Copyright 2025-2026 @dgt2024"
-	db "OK"
-kernel.winver_text:
-	pop esi
-	pop esi
-	mov ah, 0x00
-	mov dx, 0x1301
-	mov ecx, 5
-	int 0x30
-	mov ah, 0x00
-	mov dx, 0x0a03
-	mov ecx, 23
-	int 0x30
-	mov ah, 0x00
-	mov dx, 0x0106
-	mov ecx, 12
-	int 0x30
-	mov ah, 0x00
-	mov dx, 0x0108
-	mov ecx, 17
-	int 0x30
-	mov ah, 0x00
-	mov dx, 0x010a
-	mov ecx, 19
-	int 0x30
-	mov ah, 0x00
-	mov dx, 0x010e
-	mov ecx, 28
-	int 0x30
-	mov ah, 0x00
-	mov dx, 0x1512
-	mov ecx, 2
-	int 0x30
-	mov ah, 0x01
-	mov dx, 0x1311
-	mov bx, 0x0402
-	int 0x30
-	call kernel.winver_reg
-	jmp $
-kernel.winver_reg:
-	push esi
-	mov ah, 0xff
-	mov si, kernel.winver_btn-kernel.winver_text
-	int 0x30
-	pop esi
-	ret
-kernel.winver_btn:
-	mov ah, 0xfe
-	int 0x30
-	test al, 0x01
-	jz kernel.winver_nook
-	cmp dh, 0x13
-	jb kernel.winver_nook
-	cmp dl, 0x11
-	jb kernel.winver_nook
-	cmp dh, 0x19
-	ja kernel.winver_nook
-	cmp dl, 0x15
-	ja kernel.winver_nook
-	mov ah, 0xfd
-	int 0x30
-kernel.winver_nook:
-	call kernel.winver_reg
-	ret
-kernel.winver_end:
 scheduler.run:
 	mov esi, 0x2002c
 	cmp byte[0x730a], 0
@@ -1000,6 +918,173 @@ scheduler.cut_code:
 	rep movsb
 	popad
 	jmp scheduler.after_code
+disk.get_file:
+	cli
+	mov eax, dword[0x7df6]
+	mov ecx, dword[0x7dfa]
+	; eax=pwd
+	; ecx=s_size
+	mov ebx, esi
+	push edx
+disk.find_file:
+	cmp byte[esi], '/'
+	je disk.found_dir
+	cmp byte[esi], 0
+	je disk.found_file
+	inc esi
+	jmp disk.find_file
+	ret
+disk.found_dir:
+	mov byte[0x7700], 0x80
+	call disk.search_file
+	jmp disk.find_file
+disk.found_file:
+	mov byte[0x7700], 0x00
+	call disk.search_file
+	pop edi
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	call disk.fs_read
+	ret
+disk.search_file:
+	sub ebx, esi
+	neg ebx
+	push ecx
+	push ebx
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	mov edi, 0x7500
+	call disk.fs_read
+	mov ebp, 0x7500
+disk.check_dir:
+	cmp byte[0x7700], 0x00
+	je disk.check_file
+	test byte[ebp+8], 0x80
+	jz disk.next_dir_nad
+disk.after_cfnd:
+	movzx ecx, byte[ebp+11]
+	add ebp, 12
+disk.check_prop:
+	cmp byte[ebp], 0x01
+	jne disk.next_prop
+	mov dl, byte[esp]
+	cmp byte[ebp+1], dl
+	jne disk.next_dir
+	push esi
+	push ebp
+	push ecx
+	add ebp, 2
+	sub esi, dword[esp+12]
+	movzx ecx, dl
+disk.check_name:
+	mov dl, byte[ebp]
+	cmp dl, byte[esi]
+	jne disk.diff_name
+	inc ebp
+	inc esi
+	loop disk.check_name
+	pop ecx
+	pop ebp
+	pop esi
+	pop ebx
+	pop ecx
+	mov eax, dword[ebp-12]
+	mov ecx, dword[ebp-8]
+	inc esi
+	mov ebx, esi
+	ret
+disk.diff_name:
+	pop ecx
+	pop ebp
+	pop esi
+	jmp disk.next_dir
+disk.check_file:
+	test byte[ebp+8], 0x80
+	jnz disk.next_dir_nad
+	jmp disk.after_cfnd
+disk.next_prop:
+	movzx edx, byte[ebp+1]
+	loop disk.check_prop
+	jmp disk.fsr_err
+disk.next_dir_nad:
+	add ebp, 12
+disk.next_dir:
+	movzx edx, word[ebp-3]
+	add ebp, edx
+	movzx edx, dword[esp+4]
+	add edx, 0x7500
+	cmp ebp, edx
+	jb disk.check_dir
+	jmp disk.fsr_err
+disk.fs_read:
+	; eax=sector
+	; ecx=sector count
+	; edi=dest
+	xor ebx, ebx
+	mov dword[0x7500], eax
+	mov dword[0x7503], ebx
+	shr eax, 24
+	and al, 0x0f
+	mov byte[0x7506], al
+	call disk.ata_nbsy
+	mov dx, 0x1f6
+	mov al, 0xe0
+	or al, byte[0x7506]
+	out dx, al
+	mov dx, 0x1f2
+	mov al, cl
+	out dx, al
+	mov dx, 0x1f3
+	mov al, byte[0x7500]
+	out dx, al
+	mov dx, 0x1f4
+	mov al, byte[0x7501]
+	out dx, al
+	mov dx, 0x1f5
+	mov al, byte[0x7502]
+	out dx, al
+	mov dx, 0x1f7
+	mov al, 0x20
+	out dx, al
+	movzx ecx, cl
+disk.fs_read_loop:
+	push ecx
+	mov dx, 0x3f6
+	mov ecx, 4
+disk.fsr_400ns:
+	in al, dx
+	loop disk.fsr_400ns
+	pop ecx
+	call disk.ata_nbsy
+	in al, dx
+	xor al, 0x21
+	test al, 0x29
+	jz disk.fsr_err
+	push ecx
+	mov ecx, 256
+	mov dx, 0x1f0
+	rep insw
+	pop ecx
+	loop disk.fs_read_loop
+	ret
+disk.ata_nbsy:
+	mov dx, 0x1f7
+	in al, dx
+	test al, 0x80
+	jnz disk.ata_nbsy
+	ret
+disk.fsr_err:
+	mov edx, 0xffffff
+	mov edi, 0xf0002808
+	mov esi, disk.fsr_errmsg
+	mov ecx, 0xffffffff
+	call window.print
+	cli
+	hlt
+disk.fsr_errmsg:
+	db "Error in file system start"
 ps2.wait_for_input:
 	mov ecx, 0x80
 ps2.poll:
@@ -1327,10 +1412,15 @@ window.check_bar:
 	cmp dh, 30
 	ja window.after_wm
 	pushad
-	mov edx, kernel.winver
+	mov edx, 0x25000
+	mov esi, window.winver_dir
+	call disk.get_file
+	mov edx, 0x25000
 	call scheduler.create
 	popad
 	jmp window.after_wm
+window.winver_dir:
+	db "bin/winver.exe", 0
 window.mouse_update:
 	mov dx, word[0x7406]
 	pushad
@@ -2418,3 +2508,119 @@ window.font:
 	dd 100100110000000000000000000000b ; }
 	dd 000000000000000010011010110010b
 	dd 000000000000000000000000000000b ; ~
+times 0xf * 512 - ($ - $$) db 0
+disk.boot_start:
+	dd 0x00000011
+	dd disk.bin_end-disk.bin_start
+	db 0x80
+	dw 0x03
+	db 0x01, 0x01, 0x01, "."
+	dd 0x00000012
+	dd disk.boot_end-disk.boot_start
+	db 0x80
+	dw 0x05
+	db 0x01, 0x01, 0x03, "bin"
+disk.boot_end:
+times 0x10 * 512 - ($ - $$) db 0
+disk.bin_start:
+	dd 0x00000012
+	dd disk.bin_end-disk.bin_start
+	db 0x80
+	dw 0x03
+	db 0x01, 0x01, 0x01, "."
+	dd 0x00000011
+	dd disk.boot_end-disk.boot_start
+	db 0x80
+	dw 0x04
+	db 0x01, 0x01, 0x02, ".."
+	dd 0x00000013
+	dd kernel.winver_end-kernel.winver
+	db 0x00
+	dw 0x0c
+	db 0x01, 0x01, 0x0a, "winver.exe"
+disk.bin_end:
+times 0x11 * 512 - ($ - $$) db 0
+kernel.winver:
+	dw 1000000000000000b
+	db 10, 10, 55, 35
+	dw kernel.winver_data-kernel.winver_title
+	dw kernel.winver_title-kernel.winver
+	dw kernel.winver_end-kernel.winver_text
+	dw kernel.winver_text-kernel.winver
+	dw kernel.winver_text-kernel.winver_data
+	dw kernel.winver_data-kernel.winver
+	dw 0, 0, 0
+kernel.winver_title:
+	db "About ELOS6"
+kernel.winver_data:
+	db "ELOS6"
+	db "Enhanced Lightweight OS"
+	db "Version: 6.0"
+	db "Build: 2026.08.04"
+	db "Architecture: IA-32"
+	db "Copyright 2025-2026 @dgt2024"
+	db "OK"
+kernel.winver_text:
+	pop esi
+	pop esi
+	mov ah, 0x00
+	mov dx, 0x1301
+	mov ecx, 5
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x0a03
+	mov ecx, 23
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x0106
+	mov ecx, 12
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x0108
+	mov ecx, 17
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x010a
+	mov ecx, 19
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x010e
+	mov ecx, 28
+	int 0x30
+	mov ah, 0x00
+	mov dx, 0x1512
+	mov ecx, 2
+	int 0x30
+	mov ah, 0x01
+	mov dx, 0x1311
+	mov bx, 0x0402
+	int 0x30
+	call kernel.winver_reg
+	jmp $
+kernel.winver_reg:
+	push esi
+	mov ah, 0xff
+	mov si, kernel.winver_btn-kernel.winver_text
+	int 0x30
+	pop esi
+	ret
+kernel.winver_btn:
+	mov ah, 0xfe
+	int 0x30
+	test al, 0x01
+	jz kernel.winver_nook
+	cmp dh, 0x13
+	jb kernel.winver_nook
+	cmp dl, 0x11
+	jb kernel.winver_nook
+	cmp dh, 0x19
+	ja kernel.winver_nook
+	cmp dl, 0x15
+	ja kernel.winver_nook
+	mov ah, 0xfd
+	int 0x30
+kernel.winver_nook:
+	call kernel.winver_reg
+	ret
+kernel.winver_end:
+times 0x12 * 512 - ($ - $$) db 0

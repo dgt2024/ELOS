@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x020e
+	mov ax, 0x020f
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -134,7 +134,7 @@ boot.idtloop:
 	lidt [0x7300]
 	ret
 times 502 - ($ - $$) db 0
-dd 0x0000000e
+dd 0x0000000f
 dd disk.boot_end-disk.boot_start
 dw 0xaa55
 boot.exception:
@@ -176,7 +176,7 @@ kernel.init:
 	mov eax, 0x888888
 	rep stosd
 	mov ecx, 1280*(1024-16)
-	mov eax, 0xffff
+	mov eax, 0x00c0c0
 	rep stosd
 	; memory init
 	movzx cx, word[0x7308]
@@ -330,6 +330,16 @@ kernel.ld_symbols:
 	db "res/symbols.bin", 0
 kernel.ld_font:
 	db "res/font.bin", 0
+kernel.update_whole_page:
+	pushad
+	mov eax, 0x10000000
+kernel.uwpage_loop:
+	invlpg dword[eax]
+	add eax, 0x1000
+	cmp eax, 0x10041000
+	jne kernel.uwpage_loop
+	popad
+	ret
 kernel.ps2_p1clr:
 	in al, 0x64
 	test al, 0x02
@@ -597,6 +607,9 @@ kernel.service:
 	cmp ah, 0xff
 	je window.user_register
 	iretd
+debug:
+	cli
+	hlt
 scheduler.run:
 	mov esi, 0x2002c
 	cmp byte[0x730a], 0
@@ -656,14 +669,14 @@ scheduler.yield:
 	mov dword[esp+0x20], eax
 	mov esp, 0x7bfc
 	pushad
-	mov al, byte[0x730b]
-	cmp byte[0x7405], al
-	jne scheduler.no_button_prog
 	mov edi, dword[0x7320]
 	cmp word[edi+0x2e], 0
 	je scheduler.no_button_prog
 	test byte[0x7404], 7
 	jz scheduler.no_button_prog
+	mov al, byte[0x730b]
+	cmp byte[0x7405], al
+	jne scheduler.no_button_prog
 	sub dword[edi+0x24], 4
 	mov eax, dword[edi+0x24]
 	mov ebx, dword[edi+0x20]
@@ -675,6 +688,7 @@ scheduler.yield:
 scheduler.no_button_prog:
 	popad
 	mov esi, dword[0x7320]
+	add esi, 0x6c
 	mov al, byte[0x730a]
 	cmp byte[0x7324], al
 	mov al, 0x20
@@ -684,6 +698,7 @@ scheduler.no_button_prog:
 scheduler.yield_directly:
 	mov esp, 0x7bfc
 	mov esi, dword[0x7320]
+	add esi, 0x6c
 	mov al, byte[0x730a]
 	cmp byte[0x7324], al
 	jae scheduler.run_end
@@ -697,7 +712,7 @@ scheduler.yield_return:
 scheduler.pkill:
 	; kills AL
 	dec byte[0x730a]
-	movzx esi, eax
+	mov esi, eax
 	shl esi, 6
 	add esi, 0x1ffc0
 	and byte[esi+0x2c], 0x7f
@@ -707,6 +722,7 @@ scheduler.pkill:
 	mov ebx, dword[esi+0x30]
 	test ebx, ebx
 	jz scheduler.pkill_skip_wnd
+	invlpg dword[ebx]
 	mov ebx, dword[ebx]
 	mov dword[0x7500], ebx
 	sub byte[0x7501], 2
@@ -714,11 +730,9 @@ scheduler.pkill:
 	mov eax, esi
 	mov edi, 0x23ffc
 	mov ecx, 0x100
-	rep scasd
-	cmp dword[edi], eax
-	jne scheduler.pkill_skip_wnd
+	repne scasd
 	mov esi, edi
-	add esi, 4
+	sub edi, 4
 scheduler.pkill_move_wnd:
 	lodsd
 	stosd
@@ -727,16 +741,17 @@ scheduler.pkill_move_wnd:
 	call window.update_whole_ptr
 scheduler.pkill_skip_wnd:
 	pop dword[0x2100]
+	call kernel.update_whole_page
 	ret
 scheduler.create:
 	inc byte[0x730a]
-	mov esi, 0x2001f
+	mov esi, 0x2002c
 scheduler.find_space:
 	lodsb
 	add esi, 0x3f
 	test al, 0x80
 	jnz scheduler.find_space
-	sub esi, 0x5f
+	sub esi, 0x6c
 	or byte[esi+0x2c], 0x80
 	mov dword[esi+0x28], 0x202
 	mov dword[esi+0x20], 0x10002000
@@ -752,7 +767,7 @@ scheduler.find_space:
 	mov dword[esi+0x34], edi
 	or di, 0x1b
 	mov dword[0x90000], edi ; 0xa0000
-	invlpg [0xe0000000]
+	invlpg dword[0xe0000000]
 	mov edi, 0xe0000000
 	mov ecx, 0x400
 	xor eax, eax
@@ -761,7 +776,7 @@ scheduler.find_space:
 	or di, 0x1f
 	mov dword[0xe0000000], edi
 	mov dword[0x90008], edi
-	invlpg [0xe0001000]
+	invlpg dword[0xe0001000]
 	movzx ecx, word[edx+10]
 	test ecx, ecx
 	jz scheduler.end
@@ -845,9 +860,8 @@ scheduler.window:
 	pop edi
 	or edi, 0x1b
 	mov dword[0x90000], edi
-	invlpg [0xe0000000]
+	invlpg dword[0xe0000000]
 	mov ebp, edi
-	invlpg [0xe0000000]
 	mov edi, 0xe0000000
 	push esi
 	lea esi, [edx+2]
@@ -857,12 +871,12 @@ scheduler.window:
 	movzx ecx, word[edx+6]
 	rep movsb
 	mov byte[edi], 0
-	mov edi, 0x23ffc
+	mov edi, 0x24000
 	xor eax, eax
 	mov ecx, 0xffffffff
 	repne scasd
 	pop esi
-	mov dword[edi], esi
+	mov dword[edi-4], esi
 	mov esi, ebp
 	call window.updatepointer
 	ret
@@ -876,7 +890,7 @@ scheduler.add_page:
 	mov dword[esi], edi
 	add esi, 4
 	mov dword[0x90004], edi ; 0xa1000
-	invlpg [0xe0001000]
+	invlpg dword[0xe0001000]
 	cmp ecx, 0x1000
 	jz scheduler.after_code
 	jb scheduler.cut_code
@@ -885,6 +899,7 @@ scheduler.add_page:
 	mov edi, 0xe0001000
 	mov esi, edx
 	add si, word[edx+eax]
+	invlpg dword[edi]
 	rep movsb
 	pop ecx
 	jmp scheduler.add_page
@@ -1179,6 +1194,17 @@ ps2.after_walkrel:
 	out 0x20, al
 	jmp scheduler.yield_directly
 ps2.no_end_task:
+	mov eax, 0x14
+	bt [0x7408], eax
+	jnc ps2.no_file_manager
+	mov eax, 0x11
+	bt [0x7408], eax
+	jnc ps2.no_file_manager
+	mov eax, 0x2b
+	bt [0x7408], eax
+	jnc ps2.no_file_manager
+	; todo: add file manager
+ps2.no_file_manager:
 	mov al, 0x20
 	out 0x20, al
 	popad
@@ -1224,9 +1250,7 @@ memory.malloc_loop:
 	jb memory.malloc_bit
 memory.malloc_kreturn:
  	pop eax
- 	push eax
-	call memory.kmalloc
-	pop eax
+ 	sub eax, 0x1000
  	mov ebp, dword[esi+0x3c]
  	add dword[esi+0x3c], 4
 	or edi, 0x1f
@@ -1342,6 +1366,23 @@ window.render_time:
 	mov esp, dword[0x7500]
 	ret
 window.window_moves:
+	cmp dl, 0x02
+	jae window.after_iwm
+	cmp dh, 24
+	jb window.after_iwm
+	cmp dh, 30
+	ja window.after_iwm
+	pushad
+	mov edx, 0x7500
+	mov esi, window.winver_dir
+	call disk.get_file
+	mov edx, 0x7500
+	call scheduler.create
+	popad
+window.after_iwm:
+	call window.wm_update
+	jmp window.after_wm
+window.wm_update:
 	pushad
 	push dword[0x2100]
 	cmp byte[0x7429], 0
@@ -1352,6 +1393,7 @@ window.window_moves:
 	mov eax, dword[edi+0x34]
 	mov dword[0x2100], eax
 	mov ecx, dword[edi+0x30]
+	invlpg dword[ecx]
 	mov bx, word[0x7406]
 	sub bx, word[0x742a]
 	xchg bh, bl
@@ -1376,8 +1418,9 @@ window.after_wmyuf:
 	call window.update_whole_ptr
 window.after_wmpa:
 	pop dword[0x2100]
+	call kernel.update_whole_page
 	popad
-	jmp window.after_wm
+	ret
 window.wm_x_underflow:
 	sub bl, byte[ecx]
 	mov byte[ecx], 0
@@ -1391,28 +1434,13 @@ window.save_for_wm:
 	mov ax, word[0x7406]
 	mov word[0x742a], ax
 	jmp window.after_null
-window.check_bar:
-	cmp dl, 0x02
-	jae window.after_wm
-	cmp dh, 24
-	jb window.after_wm
-	cmp dh, 30
-	ja window.after_wm
-	pushad
-	mov edx, 0x7500
-	mov esi, window.winver_dir
-	call disk.get_file
-	mov edx, 0x7500
-	call scheduler.create
-	popad
-	jmp window.after_wm
 window.winver_dir:
 	db "bin/winver.exe", 0
 window.mouse_update:
 	mov dx, word[0x7406]
 	pushad
 	test byte[0x7404], 0x01
-	jnz window.check_bar
+	jnz window.after_wm
 	test byte[0x7428], 0x01
 	jnz window.window_moves
 window.after_wm:
@@ -1420,6 +1448,11 @@ window.after_wm:
 	test ebp, ebp
 	jz window.set_pid_null
 	mov eax, ebp
+	test byte[0x7404], 0x01
+	jnz window.after_cfwnd
+	test byte[0x7428], 0x01
+	jnz window.check_focused_wnd
+window.after_cfwnd:
 	sub eax, 0x1ffc0
 	shr eax, 6
 	mov byte[0x7405], al
@@ -1448,6 +1481,7 @@ window.after_null:
 	call window.updatetile
 	popad
 	pop dword[0x2100]
+	call kernel.update_whole_page
 	movzx eax, word[0x7402]
 	mul eax, 1280*4
 	movzx ebx, word[0x7400]
@@ -1475,6 +1509,38 @@ window.mouse_slend:
 	mov ecx, edx
 	loop window.mouse_loop
 	ret
+window.check_focused_wnd:
+	pushad
+	xor eax, eax
+	mov edi, 0x24000
+	mov ecx, 0xffffffff
+	repne scasd
+	cmp dword[edi-8], ebp
+	je window.check_fwnd_end
+	mov edi, 0x24000
+	mov eax, ebp
+	repne scasd
+	mov esi, edi
+	sub edi, 4
+window.cfwnd_loop:
+	lodsd
+	stosd
+	test eax, eax
+	jnz window.cfwnd_loop
+	mov dword[edi-4], ebp
+	push dword[0x2100]
+	mov eax, dword[ebp+0x34]
+	mov dword[0x2100], eax
+	mov eax, dword[ebp+0x30]
+	mov eax, dword[eax]
+	mov dword[0x7500], eax
+	sub byte[0x7501], 2
+	call window.update_whole_ptr
+	pop dword[0x2100]
+	call kernel.update_whole_page
+window.check_fwnd_end:
+	popad
+	jmp window.after_cfwnd
 window.set_pid_null:
 	test byte[0x7404], 0x01
 	jz window.after_pid_null
@@ -1666,6 +1732,7 @@ window.single:
 	call window.updatetile
 	popad
 	pop dword[0x2100]
+	call kernel.update_whole_page
 	ret
 window.double:
 	; edi = pos
@@ -1684,6 +1751,7 @@ window.double:
 	call window.updatetile
 	popad
 	pop dword[0x2100]
+	call kernel.update_whole_page
 	ret
 window.user_symbol:
 	push eax
@@ -1768,6 +1836,7 @@ window.uprint_loop:
 	call window.updatetile
 	pop edx
 	pop dword[0x2100]
+	call kernel.update_whole_page
 	mov ax, 0x23
 	mov es, ax
 	mov ds, ax
@@ -1786,6 +1855,7 @@ window.get_pid_loop:
 	mov ecx, dword[eax+0x30]
 	mov edi, dword[eax+0x34]
 	mov dword[0x2100], edi
+	invlpg dword[ecx]
 	cmp dh, byte[ecx]
 	jb window.nextwindow_nad
 	cmp dh, byte[ecx+2]
@@ -1814,6 +1884,7 @@ window.updatetile:
 	mov edi, dword[ebp+0x30]
 	mov eax, dword[ebp+0x34]
 	mov dword[0x2100], eax
+	invlpg dword[edi]
 	push edx
 	mov al, byte[edi+2]
 	sub al, byte[edi]
@@ -1938,8 +2009,8 @@ window.taskbar:
 window.no_wnd:
 	add dl, 2
 	cmp dl, 2
-	mov eax, 0x00ffff
 	jb window.taskbar
+	mov eax, 0x00c0c0
 window.after_taskbar:
 	movzx edi, dl
 	mul edi, 1280*8*4
@@ -1988,7 +2059,7 @@ window.psymb_down:
 window.updatepointer:
 	; esi=addr
 	mov dword[0x90000], esi
-	invlpg [0xe0000000]
+	invlpg dword[0xe0000000]
 	mov esi, 0xe0000000
 	movzx edi, byte[esi+1]
 	imul edi, 1280*4*8
@@ -2094,71 +2165,71 @@ window.print_skip:
 window.print_finish:
 	pop ecx
 	ret
-times 0xc * 512 - ($ - $$) db 0
+times 0xd * 512 - ($ - $$) db 0
 disk.boot_start:
-	dd 0x0000000e
+	dd 0x0000000f
 	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
-	dd 0x0000000f
+	dd 0x00000010
 	dd disk.bin_end-disk.bin_start
 	db 0x80
 	dw 0x05
 	db 0x01, 0x01, 0x03, "bin"
-	dd 0x00000010
+	dd 0x00000011
 	dd disk.bin_end-disk.bin_start
 	db 0x80
 	dw 0x05
 	db 0x01, 0x01, 0x03, "res"
 disk.boot_end:
-times 0xd * 512 - ($ - $$) db 0
-disk.bin_start:
-	dd 0x0000000f
-	dd disk.bin_end-disk.bin_start
-	db 0x80
-	dw 0x03
-	db 0x01, 0x01, 0x01, "."
-	dd 0x0000000e
-	dd disk.boot_end-disk.boot_start
-	db 0x80
-	dw 0x04
-	db 0x01, 0x01, 0x02, ".."
-	dd 0x00000011
-	dd kernel.winver_end-kernel.winver
-	db 0x00
-	dw 0x0c
-	db 0x01, 0x01, 0x0a, "winver.exe"
-	dd 0x00000012
-	dd kernel.exc_progn1_end-kernel.exc_progn1
-	db 0x00
-	dw 0x0b
-	db 0x01, 0x01, 0x09, "crash.exe"
-disk.bin_end:
 times 0xe * 512 - ($ - $$) db 0
-disk.res_start:
+disk.bin_start:
 	dd 0x00000010
 	dd disk.bin_end-disk.bin_start
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
-	dd 0x0000000e
+	dd 0x0000000f
 	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x04
 	db 0x01, 0x01, 0x02, ".."
+	dd 0x00000012
+	dd kernel.winver_end-kernel.winver
+	db 0x00
+	dw 0x0c
+	db 0x01, 0x01, 0x0a, "winver.exe"
 	dd 0x00000013
+	dd kernel.exc_progn1_end-kernel.exc_progn1
+	db 0x00
+	dw 0x0b
+	db 0x01, 0x01, 0x09, "crash.exe"
+disk.bin_end:
+times 0xf * 512 - ($ - $$) db 0
+disk.res_start:
+	dd 0x00000011
+	dd disk.bin_end-disk.bin_start
+	db 0x80
+	dw 0x03
+	db 0x01, 0x01, 0x01, "."
+	dd 0x0000000f
+	dd disk.boot_end-disk.boot_start
+	db 0x80
+	dw 0x04
+	db 0x01, 0x01, 0x02, ".."
+	dd 0x00000014
 	dd window.font_end-window.font
 	db 0x00
 	dw 0x0a
 	db 0x01, 0x01, 0x08, "font.bin"
-	dd 0x00000015
+	dd 0x00000016
 	dd window.symbols_font_end-window.symbols_font
 	db 0x00
 	dw 0x0d
 	db 0x01, 0x01, 0x0b, "symbols.bin"
 disk.res_end:
-times 0xf * 512 - ($ - $$) db 0
+times 0x10 * 512 - ($ - $$) db 0
 kernel.winver:
 	dw 1000000000000000b
 	db 10, 10, 55, 35
@@ -2242,7 +2313,7 @@ kernel.winver_nook:
 	call kernel.winver_reg
 	ret
 kernel.winver_end:
-times 0x10 * 512 - ($ - $$) db 0
+times 0x11 * 512 - ($ - $$) db 0
 kernel.exc_progn1:
 	dw 1000000000000000b
 	db 48, 56, 112, 73
@@ -2297,7 +2368,7 @@ kernel.exc_progn1_return:
 	int 0x30
 	ret
 kernel.exc_progn1_end:
-times 0x11 * 512 - ($ - $$) db 0
+times 0x12 * 512 - ($ - $$) db 0
 window.font:
 	dd 000000000000000000000000000000b
 	dd 000000000000000000000000000000b ; space
@@ -2428,7 +2499,7 @@ window.font:
 	dd 000000000000000000000000000000b ; ^
 	dd 000000000000000000000000000000b
 	dd 0x00000014
-times 0x12 * 512 - ($ - $$) db 0
+times 0x13 * 512 - ($ - $$) db 0
 	dd 000001111100000000000000000000b ; _
 	dd 010000010000010000000000000000b
 	dd 000000000000000000000000000000b ; `
@@ -2493,7 +2564,7 @@ times 0x12 * 512 - ($ - $$) db 0
 	dd 000000000000000010011010110010b
 	dd 000000000000000000000000000000b ; ~
 window.font_end:
-times 0x13 * 512 - ($ - $$) db 0
+times 0x14 * 512 - ($ - $$) db 0
 window.symbols_font:
 	db 00000000b
 	db 00000000b
@@ -2675,4 +2746,4 @@ window.symbols_font:
 	db 00111100b
 	db 00011000b
 window.symbols_font_end:
-times 0x14 * 512 - ($ - $$) db 0
+times 0x15 * 512 - ($ - $$) db 0

@@ -1,8 +1,6 @@
 .DS_Store
 *.img
 *.log
-data.md
-trash
-Build
-efs_*
-Filesystem
+tools
+link.sh
+compile.sh

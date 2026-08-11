@@ -1,4 +1,4 @@
-; This is the source code for ELOS6
+; This is the source code for ELOS6.1
 ; Thank you for checking my code ;D
 ; TODO: add bugs to fix later
 section .boot vstart=0x7c00
@@ -58,7 +58,7 @@ boot.vesa_loop:
 	mov ax, 0xe801
 	int 0x15
 	cmp ax, 0x3c00
-	jb boot.low_mem
+	;jb boot.low_mem
 	mov word[0x7308], bx
 	lgdt [boot.gdttable]
 	mov eax, cr0
@@ -179,7 +179,7 @@ kernel.init:
 	mov eax, 0x00c0c0
 	rep stosd
 	; memory init
-	movzx cx, word[0x7308]
+	mov cx, word[0x7308]
 	shr cx, 4
 	mov edi, 0x1ffff
 	mov al, 0xff
@@ -334,7 +334,7 @@ kernel.update_whole_page:
 	pushad
 	mov eax, 0x10000000
 kernel.uwpage_loop:
-	invlpg dword[eax]
+	invlpg [eax]
 	add eax, 0x1000
 	cmp eax, 0x10041000
 	jne kernel.uwpage_loop
@@ -552,7 +552,7 @@ kernel.exc_prog_nloop:
 	lea edx, [edx+ecx-1]
 	rep movsb
 	mov word[0x7506], dx
-	add edx, kernel.exc_progn1_end-kernel.exc_progn1
+	;add edx, kernel.exc_progn1_end-kernel.exc_progn1
 	mov word[0x7510], dx
 	pop ecx
 	pop esi
@@ -562,6 +562,7 @@ kernel.exc_prog_nloop:
 	mov word[0x750e], ax
 	rep movsb
 	mov edx, 0x7500
+	xor ebp, ebp
 	call scheduler.create
 	jmp scheduler.yield_directly
 kernel.exc_prog_dir:
@@ -598,6 +599,10 @@ kernel.service:
 	je window.user_simple
 	cmp ah, 3
 	je window.user_symbol
+	cmp ah, 0x40
+	je memory.user_malloc
+	cmp ah, 0x41
+	je disk.user_file_get
 	cmp ah, 0xfc
 	je scheduler.yield
 	cmp ah, 0xfd
@@ -611,6 +616,7 @@ debug:
 	cli
 	hlt
 scheduler.run:
+	sti
 	mov esi, 0x2002c
 	cmp byte[0x730a], 0
 	je scheduler.run
@@ -644,7 +650,6 @@ scheduler.find_prog:
 scheduler.run_end:
 	mov byte[0x730b], 0
 	mov byte[0x7324], 0
-	sti
 	ret
 scheduler.timer:
 	cli
@@ -722,7 +727,7 @@ scheduler.pkill:
 	mov ebx, dword[esi+0x30]
 	test ebx, ebx
 	jz scheduler.pkill_skip_wnd
-	invlpg dword[ebx]
+	invlpg [ebx]
 	mov ebx, dword[ebx]
 	mov dword[0x7500], ebx
 	sub byte[0x7501], 2
@@ -751,6 +756,7 @@ scheduler.find_space:
 	add esi, 0x3f
 	test al, 0x80
 	jnz scheduler.find_space
+	push ebp
 	sub esi, 0x6c
 	or byte[esi+0x2c], 0x80
 	mov dword[esi+0x28], 0x202
@@ -767,7 +773,7 @@ scheduler.find_space:
 	mov dword[esi+0x34], edi
 	or di, 0x1b
 	mov dword[0x90000], edi ; 0xa0000
-	invlpg dword[0xe0000000]
+	invlpg [0xe0000000]
 	mov edi, 0xe0000000
 	mov ecx, 0x400
 	xor eax, eax
@@ -776,10 +782,10 @@ scheduler.find_space:
 	or di, 0x1f
 	mov dword[0xe0000000], edi
 	mov dword[0x90008], edi
-	invlpg dword[0xe0001000]
+	invlpg [0xe0002000]
 	movzx ecx, word[edx+10]
 	test ecx, ecx
-	jz scheduler.end
+	jz scheduler.no_mmio
 	dec ecx
 	shr ecx, 12
 	inc ecx
@@ -824,18 +830,29 @@ scheduler.skip2:
 	test byte[edx+1], 0x80
 	jnz scheduler.window
 	mov dword[esi+0x30], 0
-scheduler.end:
+scheduler.no_wnd:
+	pop ebp
+	test ebp, ebp
+	jz scheduler.no_mmio
+	or ebp, 0x1f
+	mov dword[esi], ebp
+	sub esi, 0xe0000000
+	shl esi, 10
+	add esi, 0x10000000
+	mov dword[0xe0002ff4], esi
+scheduler.no_mmio:
 	ret
 scheduler.window:
 	mov al, byte[edx+4]
 	sub al, byte[edx+2]
-	jc scheduler.end
+	jc scheduler.no_wnd
 	mov cl, byte[edx+5]
 	sub cl, byte[edx+3]
-	jc scheduler.end
+	jc scheduler.no_wnd
 	mul cl
-	add cx, word[edx+8]
-	add cx, 4
+	push eax
+	add ax, word[edx+8]
+	add ax, 4
 	push eax
 	call memory.malloc
 	pop eax
@@ -860,9 +877,15 @@ scheduler.window:
 	pop edi
 	or edi, 0x1b
 	mov dword[0x90000], edi
-	invlpg dword[0xe0000000]
+	invlpg [0xe0000000]
 	mov ebp, edi
 	mov edi, 0xe0000000
+	pop eax
+	push edi
+	movzx ecx, ax
+	mov al, 0
+	rep stosb
+	pop edi
 	push esi
 	lea esi, [edx+2]
 	movsd
@@ -879,7 +902,7 @@ scheduler.window:
 	mov dword[edi-4], esi
 	mov esi, ebp
 	call window.updatepointer
-	ret
+	jmp scheduler.no_wnd
 scheduler.add_page:
 	push eax
 	push ecx
@@ -890,7 +913,7 @@ scheduler.add_page:
 	mov dword[esi], edi
 	add esi, 4
 	mov dword[0x90004], edi ; 0xa1000
-	invlpg dword[0xe0001000]
+	invlpg [0xe0001000]
 	cmp ecx, 0x1000
 	jz scheduler.after_code
 	jb scheduler.cut_code
@@ -899,7 +922,7 @@ scheduler.add_page:
 	mov edi, 0xe0001000
 	mov esi, edx
 	add si, word[edx+eax]
-	invlpg dword[edi]
+	invlpg [edi]
 	rep movsb
 	pop ecx
 	jmp scheduler.add_page
@@ -913,6 +936,22 @@ scheduler.cut_code:
 	rep movsb
 	popad
 	jmp scheduler.after_code
+module.load:
+	mov bl, 0xff
+	call memory.kmalloc
+	or di, 0x1b
+	mov dword[0x90000], edi ; 0xa0000
+	invlpg [0xe0000000]
+	mov edi, 0xe0000000
+	mov ecx, 0x400
+	xor eax, eax
+	rep stosd
+	call memory.kmalloc
+	ret
+disk.user_file_get:
+	mov edx, edi
+	call disk.get_file
+	iretd
 disk.get_file:
 	cli
 	mov eax, dword[0x7df6]
@@ -921,6 +960,8 @@ disk.get_file:
 	; ecx=s_size
 	mov ebx, esi
 	push edx
+	cmp byte[esi], 0
+	je disk.direct
 disk.find_file:
 	cmp byte[esi], '/'
 	je disk.found_dir
@@ -936,6 +977,7 @@ disk.found_dir:
 disk.found_file:
 	mov byte[0x7700], 0x00
 	call disk.search_file
+disk.direct:
 	mov edi, dword[esp]
 	push ecx
 	dec ecx
@@ -949,33 +991,33 @@ disk.found_file:
 disk.search_file:
 	sub ebx, esi
 	neg ebx
-	push ecx
 	push ebx
+	push ecx
 	dec ecx
 	shr ecx, 9
 	inc ecx
 	mov edi, 0x7500
 	call disk.fs_read
 	mov ebp, 0x7500
+	push ebp
 disk.check_dir:
 	cmp byte[0x7700], 0x00
-	je disk.check_file
+	je disk.after_cfnd
 	test byte[ebp+8], 0x80
-	jz disk.next_dir_nad
+	jz disk.next_dir
 disk.after_cfnd:
 	movzx ecx, byte[ebp+11]
 	add ebp, 12
 disk.check_prop:
 	cmp byte[ebp], 0x01
 	jne disk.next_prop
-	mov dl, byte[esp]
+	mov dl, byte[esp+8]
 	cmp byte[ebp+1], dl
 	jne disk.next_dir
 	push esi
 	push ebp
-	push ecx
 	add ebp, 2
-	sub esi, dword[esp+12]
+	sub esi, dword[esp+16]
 	movzx ecx, dl
 disk.check_name:
 	mov dl, byte[ebp]
@@ -984,38 +1026,39 @@ disk.check_name:
 	inc ebp
 	inc esi
 	loop disk.check_name
-	pop ecx
 	pop ebp
 	pop esi
-	pop ebx
+	pop ebp
 	pop ecx
-	mov eax, dword[ebp-12]
-	mov ecx, dword[ebp-8]
+	pop ebx
+	mov eax, dword[ebp]
+	mov ecx, dword[ebp+4]
 	inc esi
 	mov ebx, esi
 	ret
 disk.diff_name:
-	pop ecx
 	pop ebp
 	pop esi
 	jmp disk.next_dir
-disk.check_file:
-	test byte[ebp+8], 0x80
-	jnz disk.next_dir_nad
-	jmp disk.after_cfnd
 disk.next_prop:
 	movzx edx, byte[ebp+1]
-	loop disk.check_prop
-	jmp disk.fsr_err
-disk.next_dir_nad:
-	add ebp, 12
-disk.next_dir:
-	movzx edx, word[ebp-3]
 	add ebp, edx
-	movzx edx, dword[esp+4]
+	add ebp, 2
+	loop disk.check_prop
+	cli
+	hlt
+	jmp disk.fsr_err
+disk.next_dir:
+	pop ebp
+	movzx edx, word[ebp+9]
+	lea ebp, [ebp+edx+12]
+	push ebp
+	mov edx, dword[esp+4]
 	add edx, 0x7500
 	cmp ebp, edx
 	jb disk.check_dir
+	cli
+	hlt
 	jmp disk.fsr_err
 disk.fs_read:
 	; eax=sector
@@ -1177,12 +1220,13 @@ ps2.after_rk:
 	bts [0x7408], eax
 	jmp ps2.after_walkrel
 ps2.write_alkey_rel:
-	btc [0x7408], eax
+	btr [0x7408], eax
 ps2.after_walkrel:
-	mov eax, 0x11
+	xor eax, eax
+	mov al, 0x11
 	bt [0x7408], eax
 	jnc ps2.no_end_task
-	mov eax, 0x0c
+	mov al, 0x0c
 	bt [0x7408], eax
 	jnc ps2.no_end_task
 	cmp byte[0x7405], 0
@@ -1194,17 +1238,6 @@ ps2.after_walkrel:
 	out 0x20, al
 	jmp scheduler.yield_directly
 ps2.no_end_task:
-	mov eax, 0x14
-	bt [0x7408], eax
-	jnc ps2.no_file_manager
-	mov eax, 0x11
-	bt [0x7408], eax
-	jnc ps2.no_file_manager
-	mov eax, 0x2b
-	bt [0x7408], eax
-	jnc ps2.no_file_manager
-	; todo: add file manager
-ps2.no_file_manager:
 	mov al, 0x20
 	out 0x20, al
 	popad
@@ -1237,6 +1270,15 @@ memory.kmalloc:
 	shl edi, 12
 	add edi, 0xff000
 	ret
+memory.user_malloc:
+	mov esi, dword[0x7320]
+	mov bl, byte[0x730b]
+	mov eax, ecx
+	call memory.malloc
+	shl ebp, 10
+	add ebp, 0xffff000
+	add edi, ebp
+	iretd
 memory.malloc:
 	; esi= PCB* (should be mapped already)
 	; eax= Count
@@ -1291,7 +1333,7 @@ window.check_time:
 	mov esp, dword[0x7500]
 	ret
 window.time:
-	db " | ", 0, "00000000 | ", 0, "00000000 | ELOS6 |", 0
+	db " | ", 0, "00000000 | ", 0, "00000000 | ELOS6.1 | Explorer |", 0
 window.render_time:
 	; edx = RGB Color
 	; esi = Char
@@ -1370,13 +1412,26 @@ window.window_moves:
 	jae window.after_iwm
 	cmp dh, 24
 	jb window.after_iwm
-	cmp dh, 30
-	ja window.after_iwm
+	cmp dh, 32
+	ja window.after_winver
 	pushad
 	mov edx, 0x7500
 	mov esi, window.winver_dir
 	call disk.get_file
 	mov edx, 0x7500
+	xor ebp, ebp
+	call scheduler.create
+	popad
+	jmp window.after_iwm
+window.after_winver:
+	cmp dh, 42
+	ja window.after_iwm
+	pushad
+	mov edx, 0x7500
+	mov esi, window.explorer_dir
+	call disk.get_file
+	mov edx, 0x7500
+	xor ebp, ebp
 	call scheduler.create
 	popad
 window.after_iwm:
@@ -1393,7 +1448,7 @@ window.wm_update:
 	mov eax, dword[edi+0x34]
 	mov dword[0x2100], eax
 	mov ecx, dword[edi+0x30]
-	invlpg dword[ecx]
+	invlpg [ecx]
 	mov bx, word[0x7406]
 	sub bx, word[0x742a]
 	xchg bh, bl
@@ -1436,6 +1491,8 @@ window.save_for_wm:
 	jmp window.after_null
 window.winver_dir:
 	db "bin/winver.exe", 0
+window.explorer_dir:
+	db "bin/explorer.exe", 0
 window.mouse_update:
 	mov dx, word[0x7406]
 	pushad
@@ -1483,7 +1540,7 @@ window.after_null:
 	pop dword[0x2100]
 	call kernel.update_whole_page
 	movzx eax, word[0x7402]
-	mul eax, 1280*4
+	imul eax, 1280*4
 	movzx ebx, word[0x7400]
 	shl ebx, 2
 	add eax, ebx
@@ -1803,17 +1860,17 @@ window.user_print:
 	movzx eax, ax
 	add edi, 4
 	push eax
-	push ecx
 	mov ecx, 0xffffffff
 	mov al, 0
 	repne scasb
-	pop ecx
 	pop eax
 	add edi, eax
 	mov edx, ebp
 	pop eax
 	movzx ebx, bh
 window.uprint_loop:
+	cmp byte[esi], ' '
+	jb window.uprint_end
 	push eax
 	lodsb
 	mov byte[edi], al
@@ -1843,6 +1900,8 @@ window.uprint_loop:
 	popad
 	inc dh
 	loop window.uprint_loop
+window.uprint_end:
+	inc esi
 	iretd
 window.get_pid_by_coord:
 	mov bl, 0
@@ -1855,7 +1914,7 @@ window.get_pid_loop:
 	mov ecx, dword[eax+0x30]
 	mov edi, dword[eax+0x34]
 	mov dword[0x2100], edi
-	invlpg dword[ecx]
+	invlpg [ecx]
 	cmp dh, byte[ecx]
 	jb window.nextwindow_nad
 	cmp dh, byte[ecx+2]
@@ -1884,7 +1943,7 @@ window.updatetile:
 	mov edi, dword[ebp+0x30]
 	mov eax, dword[ebp+0x34]
 	mov dword[0x2100], eax
-	invlpg dword[edi]
+	invlpg [edi]
 	push edx
 	mov al, byte[edi+2]
 	sub al, byte[edi]
@@ -1902,7 +1961,7 @@ window.updatetile:
 	mov al, byte[edi+ebx]
 	pop edx
 	movzx edi, dl
-	mul edi, 1280*8*4
+	imul edi, 1280*8*4
 	movzx edx, dh
 	shl edx, 5
 	add edi, edx
@@ -1947,7 +2006,7 @@ window.after_tbcrlar:
 	pop edi
 	movzx ecx, dh
 	movzx edi, byte[edi+1]
-	mul edi, 1280*8*4
+	imul edi, 1280*8*4
 	add edi, 0xf0000000
 	shl ecx, 5
 	add edi, ecx
@@ -2013,7 +2072,7 @@ window.no_wnd:
 	mov eax, 0x00c0c0
 window.after_taskbar:
 	movzx edi, dl
-	mul edi, 1280*8*4
+	imul edi, 1280*8*4
 	movzx edx, dh
 	shl edx, 5
 	add edi, edx
@@ -2059,7 +2118,7 @@ window.psymb_down:
 window.updatepointer:
 	; esi=addr
 	mov dword[0x90000], esi
-	invlpg dword[0xe0000000]
+	invlpg [0xe0000000]
 	mov esi, 0xe0000000
 	movzx edi, byte[esi+1]
 	imul edi, 1280*4*8
@@ -2205,6 +2264,11 @@ disk.bin_start:
 	db 0x00
 	dw 0x0b
 	db 0x01, 0x01, 0x09, "crash.exe"
+	dd 0x00000017
+	dd window.explorer_end-window.explorer
+	db 0x00
+	dw 0x0e
+	db 0x01, 0x01, 0x0c, "explorer.exe"
 disk.bin_end:
 times 0xf * 512 - ($ - $$) db 0
 disk.res_start:
@@ -2241,45 +2305,38 @@ kernel.winver:
 	dw kernel.winver_data-kernel.winver
 	dw 0, 0, 0
 kernel.winver_title:
-	db "About ELOS6"
+	db "About ELOS6.1"
 kernel.winver_data:
-	db "ELOS6"
-	db "Enhanced Lightweight OS"
-	db "Version: 6.0"
-	db "Build: 2026.08.04"
-	db "Architecture: IA-32"
-	db "Copyright 2025-2026 @dgt2024"
-	db "OK"
+	db "ELOS6.1", 0
+	db "Enhanced Lightweight OS", 0
+	db "Version: 6.1", 0
+	db "Build: 2026.08.06", 0
+	db "Architecture: IA-32", 0
+	db "Copyright 2025-2026 @dgt2024", 0
+	db "OK", 0
 kernel.winver_text:
 	pop esi
 	pop esi
 	mov ah, 0x00
 	mov dx, 0x1301
-	mov ecx, 5
 	int 0x30
 	mov ah, 0x00
 	mov dx, 0x0a03
-	mov ecx, 23
 	int 0x30
 	mov ah, 0x00
 	mov dx, 0x0106
-	mov ecx, 12
 	int 0x30
 	mov ah, 0x00
 	mov dx, 0x0108
-	mov ecx, 17
 	int 0x30
 	mov ah, 0x00
 	mov dx, 0x010a
-	mov ecx, 19
 	int 0x30
 	mov ah, 0x00
 	mov dx, 0x010e
-	mov ecx, 28
 	int 0x30
 	mov ah, 0x00
 	mov dx, 0x1512
-	mov ecx, 2
 	int 0x30
 	mov ah, 0x01
 	mov dx, 0x1311
@@ -2747,3 +2804,67 @@ window.symbols_font:
 	db 00011000b
 window.symbols_font_end:
 times 0x15 * 512 - ($ - $$) db 0
+window.explorer:
+	dw 1000000000000000b
+	db 10, 10, 50, 50
+	dw window.explorer_data-window.explorer_title
+	dw window.explorer_title-window.explorer
+	dw window.explorer_end-window.explorer_code
+	dw window.explorer_code-window.explorer
+	dw window.explorer_code-window.explorer_data
+	dw window.explorer_data-window.explorer
+	dw 0, 0, 0
+window.explorer_title:
+	db "Explorer"
+window.explorer_data:
+	db "/bin", 0
+window.explorer_code:
+	pop esi
+	pop esi
+	mov ecx, 1
+	mov ah, 0x00
+	mov dx, 0x0101
+	int 0x30
+	push esi
+	mov ecx, 512
+	mov ah, 0x40
+	int 0x30
+	pop esi
+	push edi
+	mov ah, 0x41
+	int 0x30
+	pop edi
+	mov edx, 0x0103
+	mov ebp, ecx
+	add ebp, edi
+	push edi
+window.explorer_print:
+	push edi
+	add edi, 12
+	movzx ecx, byte[edi-1]
+window.explorer_find_name:
+	cmp byte[edi], 1
+	jne window.explorer_next_prop
+	movzx ecx, byte[edi+1]
+	cmp byte[edi+2], '.'
+	je window.explorer_hidden
+	pushad
+	add edi, 2
+	mov esi, edi
+	mov ah, 0x00
+	int 0x30
+	popad
+	add dl, 2
+window.explorer_hidden:
+	pop edi
+	movzx ebx, word[edi+9]
+	lea edi, [edi+ebx+12]
+	cmp edi, ebp
+	jb window.explorer_print
+	jmp $
+window.explorer_next_prop:
+	movzx ebx, byte[edi]
+	lea edi, [edx+edi+2]
+	jmp window.explorer_find_name
+window.explorer_end:
+times 0x16 * 512 - ($ - $$) db 0

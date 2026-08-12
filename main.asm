@@ -331,14 +331,10 @@ kernel.ld_symbols:
 kernel.ld_font:
 	db "res/font.bin", 0
 kernel.update_whole_page:
-	pushad
-	mov eax, 0x10000000
-kernel.uwpage_loop:
-	invlpg [eax]
-	add eax, 0x1000
-	cmp eax, 0x10041000
-	jne kernel.uwpage_loop
-	popad
+	push eax
+	mov eax, cr3
+	mov cr3, eax
+	pop eax
 	ret
 kernel.ps2_p1clr:
 	in al, 0x64
@@ -464,26 +460,9 @@ kernel.div_by_0:
 	hlt
 kernel.db0msg:
 	db "Tried to divide 0x", 0, "00000000 between 0", 0
-kernel.debug_inc_letter:
-	mov byte[0x7902], 'a'
-	popad
-	or dword[esp+8], 0x100
-	iretd
 kernel.debug_exc:
-	pushad
-kernel.debug_poll:
-	mov dx, 0x3f8
-	in al, dx
-	cmp al, byte[0x7902]
-	jne kernel.debug_poll
-	inc byte[0x7902]
-	cmp al, 'z'
-	je kernel.debug_inc_letter
-	popad
-	xor eax, eax
-	mov dr7, eax
-	or dword[esp+8], 0x100
-	iretd
+	cli
+	hlt
 kernel.undefined_oc:
 	test dword[esp+4], 0x03
 	jnz kernel.udopcode_r3
@@ -527,13 +506,12 @@ kernel.page_fault_msg:
 kernel.exc_prog:
 	push esi
 	push ecx
-	mov al, byte[0x730b]
-	call scheduler.pkill
 	pushad
 	mov edx, 0x7500
 	mov esi, kernel.exc_prog_dir
 	call disk.get_file
 	mov dword[esp], edi
+	mov dword[esp+8], ecx
 	popad
 	mov ecx, 0xffffffff
 	mov esi, dword[0x7320]
@@ -552,18 +530,19 @@ kernel.exc_prog_nloop:
 	lea edx, [edx+ecx-1]
 	rep movsb
 	mov word[0x7506], dx
-	;add edx, kernel.exc_progn1_end-kernel.exc_progn1
+	add edx, ebp
 	mov word[0x7510], dx
 	pop ecx
 	pop esi
 	mov ax, cx
-	stosw
 	add ax, 2
 	mov word[0x750e], ax
 	rep movsb
 	mov edx, 0x7500
 	xor ebp, ebp
 	call scheduler.create
+	mov al, byte[0x730b]
+	call scheduler.pkill
 	jmp scheduler.yield_directly
 kernel.exc_prog_dir:
 	db "bin/crash.exe", 0
@@ -599,10 +578,14 @@ kernel.service:
 	je window.user_simple
 	cmp ah, 3
 	je window.user_symbol
+	cmp ah, 4
+	je window.user_clear
 	cmp ah, 0x40
 	je memory.user_malloc
 	cmp ah, 0x41
 	je disk.user_file_get
+	cmp ah, 0x42
+	je disk.user_sector_get
 	cmp ah, 0xfc
 	je scheduler.yield
 	cmp ah, 0xfd
@@ -640,6 +623,7 @@ scheduler.find_prog:
 	mov eax, dword[esi+0x34]
 	mov dword[0x2100], eax
 	mov dword[0x7320], esi
+	call kernel.update_whole_page
 	mov ax, 0x23
 	mov es, ax
 	mov ds, ax
@@ -717,13 +701,14 @@ scheduler.yield_return:
 scheduler.pkill:
 	; kills AL
 	dec byte[0x730a]
-	mov esi, eax
+	movzx esi, al
 	shl esi, 6
 	add esi, 0x1ffc0
 	and byte[esi+0x2c], 0x7f
 	push dword[0x2100]
 	mov ebx, dword[esi+0x34]
 	mov dword[0x2100], ebx
+	call kernel.update_whole_page
 	mov ebx, dword[esi+0x30]
 	test ebx, ebx
 	jz scheduler.pkill_skip_wnd
@@ -922,7 +907,6 @@ scheduler.add_page:
 	mov edi, 0xe0001000
 	mov esi, edx
 	add si, word[edx+eax]
-	invlpg [edi]
 	rep movsb
 	pop ecx
 	jmp scheduler.add_page
@@ -1060,6 +1044,10 @@ disk.next_dir:
 	cli
 	hlt
 	jmp disk.fsr_err
+disk.user_sector_get:
+	mov eax, edx
+	call disk.fs_read
+	iretd 
 disk.fs_read:
 	; eax=sector
 	; ecx=sector count
@@ -1447,8 +1435,8 @@ window.wm_update:
 	add edi, 0x1ffc0
 	mov eax, dword[edi+0x34]
 	mov dword[0x2100], eax
+	call kernel.update_whole_page
 	mov ecx, dword[edi+0x30]
-	invlpg [ecx]
 	mov bx, word[0x7406]
 	sub bx, word[0x742a]
 	xchg bh, bl
@@ -1588,6 +1576,7 @@ window.cfwnd_loop:
 	push dword[0x2100]
 	mov eax, dword[ebp+0x34]
 	mov dword[0x2100], eax
+	call kernel.update_whole_page
 	mov eax, dword[ebp+0x30]
 	mov eax, dword[eax]
 	mov dword[0x7500], eax
@@ -1666,6 +1655,19 @@ window.get_data_prot:
 	mov ax, 0x23
 	mov es, ax
 	ret
+window.user_clear:
+	call window.get_data_prot
+	mov ax, word[edi+2]
+	sub ax, word[edi]
+	mul ah
+	movzx ebx, ax
+	add edi, 4
+	mov al, 0
+	mov ecx, 0xffffffff
+	repne scasb
+	mov ecx, ebx
+	rep stosb
+	iretd
 window.user_register:
 	; at ESI is offset from starting addr
 	mov edi, dword[0x7320]
@@ -1904,6 +1906,7 @@ window.uprint_end:
 	inc esi
 	iretd
 window.get_pid_by_coord:
+	push dword[0x2100]
 	mov bl, 0
 	mov esi, 0x24000
 	xor ebp, ebp
@@ -1914,7 +1917,7 @@ window.get_pid_loop:
 	mov ecx, dword[eax+0x30]
 	mov edi, dword[eax+0x34]
 	mov dword[0x2100], edi
-	invlpg [ecx]
+	call kernel.update_whole_page
 	cmp dh, byte[ecx]
 	jb window.nextwindow_nad
 	cmp dh, byte[ecx+2]
@@ -1931,6 +1934,8 @@ window.nextwindow_nad:
 	inc bl
 	jmp window.get_pid_loop
 window.get_pid_none:
+	pop dword[0x2100]
+	call kernel.update_whole_page
 	ret
 window.nexttile:
 	add esi, 0x40
@@ -1943,7 +1948,7 @@ window.updatetile:
 	mov edi, dword[ebp+0x30]
 	mov eax, dword[ebp+0x34]
 	mov dword[0x2100], eax
-	invlpg [edi]
+	call kernel.update_whole_page
 	push edx
 	mov al, byte[edi+2]
 	sub al, byte[edi]
@@ -2384,9 +2389,7 @@ kernel.exc_progn1:
 kernel.exc_progn1_cs:
 	pop esi
 	pop esi
-	mov cx, word[esi]
 	push esi
-	add esi, 2
 	mov dx, 0x0202
 	mov ah, 0x00
 	int 0x30
@@ -2395,8 +2398,7 @@ kernel.exc_progn1_cs:
 	mov ah, 0x01
 	int 0x30
 	pop esi
-	mov word[esi], "OK"
-	mov ecx, 2
+	mov dword[esi], "OK"
 	mov dx, 0x1f06
 	mov ah, 0x00
 	int 0x30
@@ -2807,35 +2809,39 @@ times 0x15 * 512 - ($ - $$) db 0
 window.explorer:
 	dw 1000000000000000b
 	db 10, 10, 50, 50
-	dw window.explorer_data-window.explorer_title
+	dw window.explorer_code-window.explorer_title
 	dw window.explorer_title-window.explorer
 	dw window.explorer_end-window.explorer_code
 	dw window.explorer_code-window.explorer
-	dw window.explorer_code-window.explorer_data
-	dw window.explorer_data-window.explorer
-	dw 0, 0, 0
+	dw 0, 0, 0, 0, 0
 window.explorer_title:
 	db "Explorer"
-window.explorer_data:
-	db "/bin", 0
 window.explorer_code:
-	pop esi
-	pop esi
-	mov ecx, 1
-	mov ah, 0x00
-	mov dx, 0x0101
-	int 0x30
-	push esi
 	mov ecx, 512
 	mov ah, 0x40
 	int 0x30
-	pop esi
 	push edi
-	mov ah, 0x41
+	mov edx, 0
+	mov ecx, 1
+	mov ah, 0x42
 	int 0x30
-	pop edi
-	mov edx, 0x0103
-	mov ebp, ecx
+	mov edi, dword[esp]
+	mov edx, dword[edi+0x1f6]
+	mov ecx, dword[edi+0x1fa]
+window.explorer_update:
+	pushad
+	mov ah, 0x04
+	int 0x30
+	popad
+	push ecx
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	mov ah, 0x42
+	int 0x30
+	pop ebp
+	mov edi, dword[esp]
+	mov edx, 0x0101
 	add ebp, edi
 	push edi
 window.explorer_print:
@@ -2846,8 +2852,6 @@ window.explorer_find_name:
 	cmp byte[edi], 1
 	jne window.explorer_next_prop
 	movzx ecx, byte[edi+1]
-	cmp byte[edi+2], '.'
-	je window.explorer_hidden
 	pushad
 	add edi, 2
 	mov esi, edi
@@ -2861,10 +2865,44 @@ window.explorer_hidden:
 	lea edi, [edi+ebx+12]
 	cmp edi, ebp
 	jb window.explorer_print
+	mov si, window.explorer_button-window.explorer_code
+	mov ah, 0xff
+	int 0x30
 	jmp $
 window.explorer_next_prop:
 	movzx ebx, byte[edi]
 	lea edi, [edx+edi+2]
 	jmp window.explorer_find_name
+window.explorer_button:
+	mov ah, 0xfe
+	int 0x30
+	cmp dl, 2
+	jb window.explorer_skipbtn
+	movzx ecx, dl
+	sub ecx, 3
+	shr ecx, 1
+	jecxz window.explorer_direct
+	mov edi, dword[esp+4]
+window.explorer_loop:
+	movzx edx, word[edi+9]
+	lea edi, [edi+edx+12]
+	cmp edi, ebp
+	jae window.explorer_skipbtn
+	loop window.explorer_loop
+window.explorer_direct:
+	test byte[edi+8], 0x80
+	jz window.explorer_skipbtn
+	pop eax
+	mov edx, dword[edi]
+	mov ecx, dword[edi+4]
+	mov edi, dword[esp]
+	jmp window.explorer_update
+window.explorer_skipbtn:
+	mov ah, 0xfc
+	int 0x30
+	mov si, window.explorer_button-window.explorer_code
+	mov ah, 0xff
+	int 0x30
+	ret
 window.explorer_end:
 times 0x16 * 512 - ($ - $$) db 0

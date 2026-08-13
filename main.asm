@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x020f
+	mov ax, 0x0210
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -134,7 +134,7 @@ boot.idtloop:
 	lidt [0x7300]
 	ret
 times 502 - ($ - $$) db 0
-dd 0x0000000f
+dd 0x00000010
 dd disk.boot_end-disk.boot_start
 dw 0xaa55
 boot.exception:
@@ -170,14 +170,6 @@ kernel.run:
 kernel.init:
 	; debug init
 	mov byte[0x7902], 'a'
-	; video init
-	mov edi, 0xf0000000
-	mov ecx, 1280*16
-	mov eax, 0x888888
-	rep stosd
-	mov ecx, 1280*(1024-16)
-	mov eax, 0x00c0c0
-	rep stosd
 	; memory init
 	mov cx, word[0x7308]
 	shr cx, 4
@@ -283,9 +275,15 @@ kernel.init:
 	mov esi, kernel.ld_font
 	mov edx, 0x24400
 	call disk.get_file
+	cmp ah, 0x01
+	je kernel.init_err
 	mov esi, kernel.ld_symbols
 	mov edx, 0x24700
 	call disk.get_file
+	cmp ah, 0x01
+	je kernel.init_err
+	; drivers
+	call module.pci_init
 	; Set Up mouse
 	mov word[0x7400], 640
 	mov word[0x7402], 512
@@ -325,7 +323,29 @@ kernel.init:
 	mov word[0x560], 0xffff
 	mov ax, 0x28
 	ltr ax
+	; create net_task
+	cmp dword[0x7380], 0
+	je kernel.init_no_net
+	mov ebp, dword[0x7384]
+	mov edx, 0x25000
+	call scheduler.create
+kernel.init_no_net:
+	; video init
+	mov edi, 0xf0000000
+	mov ecx, 1280*16
+	mov eax, 0x888888
+	rep stosd
+	mov ecx, 1280*(1024-16)
+	mov eax, 0x00c0c0
+	rep stosd
 	ret
+kernel.init_err:
+	mov edi, 0xf0000000
+	mov eax, 0xff0000
+	mov ecx, 1280*1024
+	rep stosd
+	cli
+	hlt
 kernel.ld_symbols:
 	db "res/symbols.bin", 0
 kernel.ld_font:
@@ -586,6 +606,8 @@ kernel.service:
 	je disk.user_file_get
 	cmp ah, 0x42
 	je disk.user_sector_get
+	cmp ah, 0x43
+	je scheduler.user_create
 	cmp ah, 0xfc
 	je scheduler.yield
 	cmp ah, 0xfd
@@ -733,6 +755,10 @@ scheduler.pkill_skip_wnd:
 	pop dword[0x2100]
 	call kernel.update_whole_page
 	ret
+scheduler.user_create:
+	xor ebp, ebp
+	call scheduler.create
+	iretd
 scheduler.create:
 	inc byte[0x730a]
 	mov esi, 0x2002c
@@ -810,7 +836,7 @@ scheduler.skip2:
 	or edi, 0x1f
 	mov dword[esi], edi
 	lea ebp, [esi+4]
-	pop esi
+	xchg esi, dword[esp]
 	mov dword[esi+0x3c], ebp
 	test byte[edx+1], 0x80
 	jnz scheduler.window
@@ -820,12 +846,16 @@ scheduler.no_wnd:
 	test ebp, ebp
 	jz scheduler.no_mmio
 	or ebp, 0x1f
+	cli
+	hlt
+	mov esi, dword[esp-4]
 	mov dword[esi], ebp
 	sub esi, 0xe0000000
 	shl esi, 10
-	add esi, 0x10000000
+	add esi, 0x10001000
 	mov dword[0xe0002ff4], esi
 scheduler.no_mmio:
+	pop esi
 	ret
 scheduler.window:
 	mov al, byte[edx+4]
@@ -932,6 +962,79 @@ module.load:
 	rep stosd
 	call memory.kmalloc
 	ret
+module.pci_init:
+	mov ebx, 0x7ffffc00
+module.pci_poll:
+	add ebx, 0x400
+	mov eax, ebx
+	call module.pci_reg
+	mov ecx, eax
+	ror ecx, 16
+	cmp ax, 0xffff
+	je module.pci_poll
+	mov eax, ebx
+	mov al, 0x08
+	call module.pci_reg
+	rol eax, 16
+	cmp ebx, 0x81000000
+	jae module.pci_end
+	cmp ah, 0x02
+	je module.pci_net
+	jmp module.pci_poll
+module.pci_end:
+	ret
+module.pci_net:
+	cmp dword[0x7380], 0
+	jne module.pci_poll
+	push ecx
+	mov eax, ecx
+	mov ecx, 4
+	mov edi, module.pci_devfile2
+	call kernel.hex_loop
+	inc edi
+	mov ecx, 4
+	call kernel.hex_loop
+	push ebx
+	mov esi, module.pci_devfile1
+	mov edx, 0x25000
+	call disk.get_file
+	pop ebx
+	pop ecx
+	cmp al, 0x01
+	je module.pci_poll
+	mov bl, 0x10
+	mov eax, ebx
+	call module.pci_reg
+	test al, 0x07
+	jnz module.pci_poll
+	or al, 0x1f
+	mov dword[0x7380], ecx
+	mov dword[0x7384], eax
+	mov dword[module.pci_devfile3], "read"
+	mov esi, module.pci_devfile1
+	mov edx, 0x25200
+	call disk.get_file
+	mov dword[module.pci_devfile3], "send"
+	mov esi, module.pci_devfile1
+	mov edx, 0x25400
+	call disk.get_file
+	mov dword[module.pci_devfile3], "_end"
+	mov esi, module.pci_devfile1
+	mov edx, 0x25600
+	call disk.get_file
+	jmp module.pci_poll
+module.pci_devfile1:
+	db "dev/"
+module.pci_devfile2:
+	db "0000:0000/"
+module.pci_devfile3:
+	db "init.exe", 0
+module.pci_reg:
+	mov dx, 0xcf8
+	out dx, eax
+	mov dx, 0xcfc
+	in eax, dx
+	ret
 disk.user_file_get:
 	mov edx, edi
 	call disk.get_file
@@ -971,6 +1074,7 @@ disk.direct:
 	pop ecx
 	pop edi
 	add edi, ecx
+	mov ah, 0x00
 	ret
 disk.search_file:
 	sub ebx, esi
@@ -1029,9 +1133,9 @@ disk.next_prop:
 	add ebp, edx
 	add ebp, 2
 	loop disk.check_prop
-	cli
-	hlt
-	jmp disk.fsr_err
+	add esp, 20
+	mov ah, 0x01
+	ret
 disk.next_dir:
 	pop ebp
 	movzx edx, word[ebp+9]
@@ -1041,9 +1145,9 @@ disk.next_dir:
 	add edx, 0x7500
 	cmp ebp, edx
 	jb disk.check_dir
-	cli
-	hlt
-	jmp disk.fsr_err
+	add esp, 20
+	mov ah, 0x01
+	ret
 disk.user_sector_get:
 	mov eax, edx
 	call disk.fs_read
@@ -1406,6 +1510,8 @@ window.window_moves:
 	mov edx, 0x7500
 	mov esi, window.winver_dir
 	call disk.get_file
+	cmp ah, 0x01
+	je kernel.init_err
 	mov edx, 0x7500
 	xor ebp, ebp
 	call scheduler.create
@@ -1418,6 +1524,8 @@ window.after_winver:
 	mov edx, 0x7500
 	mov esi, window.explorer_dir
 	call disk.get_file
+	cmp ah, 0x01
+	je kernel.init_err
 	mov edx, 0x7500
 	xor ebp, ebp
 	call scheduler.create
@@ -2229,76 +2337,81 @@ window.print_skip:
 window.print_finish:
 	pop ecx
 	ret
-times 0xd * 512 - ($ - $$) db 0
+times 0xe * 512 - ($ - $$) db 0
 disk.boot_start:
-	dd 0x0000000f
+	dd 0x00000010
 	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
-	dd 0x00000010
-	dd disk.bin_end-disk.bin_start
-	db 0x80
-	dw 0x05
-	db 0x01, 0x01, 0x03, "bin"
 	dd 0x00000011
 	dd disk.bin_end-disk.bin_start
 	db 0x80
 	dw 0x05
+	db 0x01, 0x01, 0x03, "bin"
+	dd 0x00000012
+	dd disk.res_end-disk.res_start
+	db 0x80
+	dw 0x05
 	db 0x01, 0x01, 0x03, "res"
+	dd 0x00000019
+	dd disk.dev_end-disk.dev_start
+	db 0x80
+	dw 0x05
+	db 0x01, 0x01, 0x03, "dev"
 disk.boot_end:
-times 0xe * 512 - ($ - $$) db 0
+times 0xf * 512 - ($ - $$) db 0
 disk.bin_start:
-	dd 0x00000010
+	dd 0x00000011
 	dd disk.bin_end-disk.bin_start
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
-	dd 0x0000000f
+	dd 0x00000010
 	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x04
 	db 0x01, 0x01, 0x02, ".."
-	dd 0x00000012
+	dd 0x00000013
 	dd kernel.winver_end-kernel.winver
 	db 0x00
 	dw 0x0c
 	db 0x01, 0x01, 0x0a, "winver.exe"
-	dd 0x00000013
+	dd 0x00000014
 	dd kernel.exc_progn1_end-kernel.exc_progn1
 	db 0x00
 	dw 0x0b
 	db 0x01, 0x01, 0x09, "crash.exe"
-	dd 0x00000017
+	dd 0x00000018
 	dd window.explorer_end-window.explorer
 	db 0x00
 	dw 0x0e
 	db 0x01, 0x01, 0x0c, "explorer.exe"
 disk.bin_end:
-times 0xf * 512 - ($ - $$) db 0
+times 0x10 * 512 - ($ - $$) db 0
 disk.res_start:
-	dd 0x00000011
-	dd disk.bin_end-disk.bin_start
+	dd 0x00000012
+	dd disk.res_end-disk.res_start
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
-	dd 0x0000000f
+	dd 0x00000010
 	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x04
 	db 0x01, 0x01, 0x02, ".."
-	dd 0x00000014
+	dd 0x00000015
 	dd window.font_end-window.font
 	db 0x00
 	dw 0x0a
 	db 0x01, 0x01, 0x08, "font.bin"
-	dd 0x00000016
+	dd 0x00000017
 	dd window.symbols_font_end-window.symbols_font
 	db 0x00
 	dw 0x0d
 	db 0x01, 0x01, 0x0b, "symbols.bin"
 disk.res_end:
-times 0x10 * 512 - ($ - $$) db 0
+times 0x11 * 512 - ($ - $$) db 0
 kernel.winver:
 	dw 1000000000000000b
 	db 10, 10, 55, 35
@@ -2375,7 +2488,7 @@ kernel.winver_nook:
 	call kernel.winver_reg
 	ret
 kernel.winver_end:
-times 0x11 * 512 - ($ - $$) db 0
+times 0x12 * 512 - ($ - $$) db 0
 kernel.exc_progn1:
 	dw 1000000000000000b
 	db 48, 56, 112, 73
@@ -2427,7 +2540,7 @@ kernel.exc_progn1_return:
 	int 0x30
 	ret
 kernel.exc_progn1_end:
-times 0x12 * 512 - ($ - $$) db 0
+times 0x13 * 512 - ($ - $$) db 0
 window.font:
 	dd 000000000000000000000000000000b
 	dd 000000000000000000000000000000b ; space
@@ -2557,8 +2670,8 @@ window.font:
 	dd 001000101010001000000000000000b
 	dd 000000000000000000000000000000b ; ^
 	dd 000000000000000000000000000000b
-	dd 0x00000014
-times 0x13 * 512 - ($ - $$) db 0
+	dd 0x00000016
+times 0x14 * 512 - ($ - $$) db 0
 	dd 000001111100000000000000000000b ; _
 	dd 010000010000010000000000000000b
 	dd 000000000000000000000000000000b ; `
@@ -2623,7 +2736,7 @@ times 0x13 * 512 - ($ - $$) db 0
 	dd 000000000000000010011010110010b
 	dd 000000000000000000000000000000b ; ~
 window.font_end:
-times 0x14 * 512 - ($ - $$) db 0
+times 0x15 * 512 - ($ - $$) db 0
 window.symbols_font:
 	db 00000000b
 	db 00000000b
@@ -2805,7 +2918,7 @@ window.symbols_font:
 	db 00111100b
 	db 00011000b
 window.symbols_font_end:
-times 0x15 * 512 - ($ - $$) db 0
+times 0x16 * 512 - ($ - $$) db 0
 window.explorer:
 	dw 1000000000000000b
 	db 10, 10, 50, 50
@@ -2865,6 +2978,7 @@ window.explorer_hidden:
 	lea edi, [edi+ebx+12]
 	cmp edi, ebp
 	jb window.explorer_print
+	call window.explorer_unclick
 	mov si, window.explorer_button-window.explorer_code
 	mov ah, 0xff
 	int 0x30
@@ -2887,22 +3001,93 @@ window.explorer_loop:
 	movzx edx, word[edi+9]
 	lea edi, [edi+edx+12]
 	cmp edi, ebp
-	jae window.explorer_skipbtn
+	ja window.explorer_skipbtn
 	loop window.explorer_loop
 window.explorer_direct:
-	test byte[edi+8], 0x80
-	jz window.explorer_skipbtn
 	pop eax
 	mov edx, dword[edi]
 	mov ecx, dword[edi+4]
+	test byte[edi+8], 0x80
 	mov edi, dword[esp]
+	jz window.explorer_prog_start
 	jmp window.explorer_update
 window.explorer_skipbtn:
-	mov ah, 0xfc
-	int 0x30
+	call window.explorer_unclick
 	mov si, window.explorer_button-window.explorer_code
 	mov ah, 0xff
 	int 0x30
 	ret
+window.explorer_prog_start:
+	push edi
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	mov ah, 0x42
+	int 0x30
+	pop edx
+	mov ah, 0x43
+	int 0x30
+	mov ah, 0xfd
+	int 0x30
+window.explorer_unclick:
+	pushad
+	mov ah, 0xfc
+	int 0x30
+	mov ah, 0xfe
+	int 0x30
+	test al, 0x01
+	popad
+	jnz window.explorer_unclick
+	ret
 window.explorer_end:
-times 0x16 * 512 - ($ - $$) db 0
+times 0x17 * 512 - ($ - $$) db 0
+disk.dev_start:
+	dd 0x00000019
+	dd disk.dev_end-disk.dev_start
+	db 0x80
+	dw 0x03
+	db 0x01, 0x01, 0x01, "."
+	dd 0x00000010
+	dd disk.boot_end-disk.boot_start
+	db 0x80
+	dw 0x04
+	db 0x01, 0x01, 0x02, ".."
+	dd 0x0000001a
+	dd module.100e_end-module.100e_start
+	db 0x80
+	dw 0x0b
+	db 0x01, 0x01, 0x09, "8086:100E"
+disk.dev_end:
+times 0x18 * 512 - ($ - $$) db 0
+module.100e_start:
+	dd 0x0000001a
+	dd module.100e_end-module.100e_start
+	db 0x80
+	dw 0x03
+	db 0x01, 0x01, 0x01, "."
+	dd 0x00000019
+	dd disk.dev_end-disk.dev_start
+	db 0x80
+	dw 0x04
+	db 0x01, 0x01, 0x02, ".."
+	dd 0x0000001b
+	dd module.100e_init_end-module.100e_init_start
+	db 0x00
+	dw 0x0a
+	db 0x01, 0x01, 0x08, "init.exe"
+module.100e_end:
+times 0x19 * 512 - ($ - $$) db 0
+module.100e_init_start:
+	dw 0x8000
+	db 5, 5, 10, 10
+	dw module.100e_init_code-module.100e_init_name
+	dw module.100e_init_name-module.100e_init_start
+	dw module.100e_init_end-module.100e_init_code
+	dw module.100e_init_code-module.100e_init_start
+	dw 0, 0, 0, 0, 0
+module.100e_init_name:
+	db "E1000 Driver"
+module.100e_init_code:
+	jmp $
+module.100e_init_end:
+times 0x1a * 512 - ($ - $$) db 0

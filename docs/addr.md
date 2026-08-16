@@ -25,6 +25,8 @@ User content -> 0xb0000
 0x7325 -> Timer
 0x7380 -> NET v:d
 0x7384 -> NET MMIO
+0x7388 -> NET send ; EDI/ECX
+0x738c -> NET recv ; ESI/ECX
 0x7400 -> Mouse X (in pixels)
 0x7402 -> Mouse Y (in pixels)
 0x7404 -> Button Flag
@@ -45,10 +47,9 @@ User content -> 0xb0000
 0x20000-0x24000 -> PCB array
 0x24000-0x24400 -> Window Array
 0x24400-0x24800 -> Textures
-0x25000 -> NET init
-0x25200 -> NET read
-0x25400 -> NET write
-0x25600 -> NET end
+0x24800-0x25000 -> IPC (todo)
+0x25000-0x25200+ -> NET init
+0x25200-0x26000 -> NET scrap memory
 
 # Structs
 struct pcb {

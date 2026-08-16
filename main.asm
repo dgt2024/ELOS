@@ -283,37 +283,29 @@ kernel.init:
 	cmp ah, 0x01
 	je kernel.init_err
 	; drivers
-	call module.pci_init
+	;call module.pci_init
 	; Set Up mouse
 	mov word[0x7400], 640
 	mov word[0x7402], 512
 	; Interrupt create
-	mov dword[0x1104], 0xc0008e00
+	mov word[0x1106], 0xc000
 	mov word[0x1102], 0x0008
 	mov word[0x1100], scheduler.timer
 	mov dword[0x1184], 0xc000ee00
-	mov word[0x1182], 0x0008
 	mov word[0x1180], kernel.service
-	mov dword[0x110c], 0xc0008e00
-	mov word[0x110a], 0x0008
+	mov dword[0x110e], 0xc000
 	mov word[0x1108], ps2.keyboard
-	mov dword[0x1164], 0xc0008e00
-	mov word[0x1162], 0x0008
+	mov dword[0x1166], 0xc000
 	mov word[0x1160], ps2.mouse
-	mov dword[0x1004], 0xc0008e00
-	mov word[0x1002], 0x0008
+	mov dword[0x1006], 0xc000
 	mov word[0x1000], kernel.div_by_0
-	mov dword[0x100c], 0xc0008e00
-	mov word[0x100a], 0x0008
+	mov dword[0x100e], 0xc000
 	mov word[0x1008], kernel.debug_exc
-	mov dword[0x1034], 0xc0008e00
-	mov word[0x1032], 0x0008
+	mov dword[0x1036], 0xc000
 	mov word[0x1030], kernel.undefined_oc
-	mov dword[0x106c], 0xc0008e00
-	mov word[0x106a], 0x0008
+	mov dword[0x106e], 0xc000
 	mov word[0x1068], kernel.general_pf
-	mov dword[0x1074], 0xc0008e00
-	mov word[0x1072], 0x0008
+	mov dword[0x1076], 0xc000
 	mov word[0x1070], kernel.page_fault
 	lidt [0x7300]
 	sti
@@ -323,21 +315,24 @@ kernel.init:
 	mov word[0x560], 0xffff
 	mov ax, 0x28
 	ltr ax
-	; create net_task
-	cmp dword[0x7380], 0
-	je kernel.init_no_net
-	mov ebp, dword[0x7384]
-	mov edx, 0x25000
-	call scheduler.create
-kernel.init_no_net:
 	; video init
-	mov edi, 0xf0000000
-	mov ecx, 1280*16
-	mov eax, 0x888888
-	rep stosd
-	mov ecx, 1280*(1024-16)
-	mov eax, 0x00c0c0
-	rep stosd
+	xor edx, edx
+	mov ecx, 160*128
+kernel.init_wp:
+	push ecx
+	push edx
+	call window.no_wnd
+	pop edx
+	pop ecx
+	inc dh
+	cmp dh, 160
+	jae kernel.init_wpdown
+	loop kernel.init_wp
+	ret
+kernel.init_wpdown:
+	mov dh, 0
+	inc dl
+	loop kernel.init_wp
 	ret
 kernel.init_err:
 	mov edi, 0xf0000000
@@ -767,7 +762,6 @@ scheduler.find_space:
 	add esi, 0x3f
 	test al, 0x80
 	jnz scheduler.find_space
-	push ebp
 	sub esi, 0x6c
 	or byte[esi+0x2c], 0x80
 	mov dword[esi+0x28], 0x202
@@ -796,7 +790,7 @@ scheduler.find_space:
 	invlpg [0xe0002000]
 	movzx ecx, word[edx+10]
 	test ecx, ecx
-	jz scheduler.no_mmio
+	jz scheduler.no_wnd
 	dec ecx
 	shr ecx, 12
 	inc ecx
@@ -809,7 +803,6 @@ scheduler.find_space:
 	cmp word[edx+16], 0
 	jz scheduler.skip1
 	push esi
-	sub esi, 0xe0000000
 	shl esi, 10
 	add esi, 0x10000000
 	mov dword[0xe0002ff8], esi
@@ -822,7 +815,6 @@ scheduler.skip1:
 	cmp word[edx+20], 0
 	jz scheduler.skip2
 	push esi
-	sub esi, 0xe0000000
 	shl esi, 10
 	add esi, 0x10000000
 	mov dword[0xe0002ffc], esi
@@ -836,26 +828,12 @@ scheduler.skip2:
 	or edi, 0x1f
 	mov dword[esi], edi
 	lea ebp, [esi+4]
-	xchg esi, dword[esp]
-	mov dword[esi+0x3c], ebp
+	pop esi
 	test byte[edx+1], 0x80
+	mov dword[esi+0x3c], ebp
 	jnz scheduler.window
 	mov dword[esi+0x30], 0
 scheduler.no_wnd:
-	pop ebp
-	test ebp, ebp
-	jz scheduler.no_mmio
-	or ebp, 0x1f
-	cli
-	hlt
-	mov esi, dword[esp-4]
-	mov dword[esi], ebp
-	sub esi, 0xe0000000
-	shl esi, 10
-	add esi, 0x10001000
-	mov dword[0xe0002ff4], esi
-scheduler.no_mmio:
-	pop esi
 	ret
 scheduler.window:
 	mov al, byte[edx+4]
@@ -1000,35 +978,18 @@ module.pci_net:
 	call disk.get_file
 	pop ebx
 	pop ecx
-	cmp al, 0x01
+	cmp ah, 0x01
 	je module.pci_poll
-	mov bl, 0x10
-	mov eax, ebx
-	call module.pci_reg
-	test al, 0x07
-	jnz module.pci_poll
-	or al, 0x1f
+	pushad
+	call 0x25000
+	popad
 	mov dword[0x7380], ecx
-	mov dword[0x7384], eax
-	mov dword[module.pci_devfile3], "read"
-	mov esi, module.pci_devfile1
-	mov edx, 0x25200
-	call disk.get_file
-	mov dword[module.pci_devfile3], "send"
-	mov esi, module.pci_devfile1
-	mov edx, 0x25400
-	call disk.get_file
-	mov dword[module.pci_devfile3], "_end"
-	mov esi, module.pci_devfile1
-	mov edx, 0x25600
-	call disk.get_file
+	mov dword[0x7384], ebx
 	jmp module.pci_poll
 module.pci_devfile1:
 	db "dev/"
 module.pci_devfile2:
-	db "0000:0000/"
-module.pci_devfile3:
-	db "init.exe", 0
+	db "0000:0000.dev", 0
 module.pci_reg:
 	mov dx, 0xcf8
 	out dx, eax
@@ -2182,7 +2143,7 @@ window.no_wnd:
 	add dl, 2
 	cmp dl, 2
 	jb window.taskbar
-	mov eax, 0x00c0c0
+	mov eax, 0x008080
 window.after_taskbar:
 	movzx edi, dl
 	imul edi, 1280*8*4
@@ -2203,7 +2164,7 @@ window.blank:
 	mov ecx, 8
 window.blank_loop:
 	mov edx, ecx
-	mov eax, 0xcccccc
+	mov eax, 0xc0c0c0
 	mov ecx, 8
 	rep stosd
 	add edi, (1280-8)*4
@@ -2264,7 +2225,7 @@ window.title_loop:
 	loop window.title_loop
 	pop ecx
 	push ecx
-	mov eax, 0xcccccc
+	mov eax, 0xc0c0c0
 window.ptr_loop:
 	push ecx
 	mov ecx, edx
@@ -2387,6 +2348,11 @@ disk.bin_start:
 	db 0x00
 	dw 0x0e
 	db 0x01, 0x01, 0x0c, "explorer.exe"
+	dd 0x0000001b
+	dd module.notepad_end-module.notepad
+	db 0x00
+	dw 0x0d
+	db 0x01, 0x01, 0x0b, "notepad.exe"
 disk.bin_end:
 times 0x10 * 512 - ($ - $$) db 0
 disk.res_start:
@@ -2990,8 +2956,8 @@ window.explorer_next_prop:
 window.explorer_button:
 	mov ah, 0xfe
 	int 0x30
-	cmp dl, 2
-	jb window.explorer_skipbtn
+	cmp dl, 4
+	jbe window.explorer_skipbtn
 	movzx ecx, dl
 	sub ecx, 3
 	shr ecx, 1
@@ -3053,41 +3019,99 @@ disk.dev_start:
 	dw 0x04
 	db 0x01, 0x01, 0x02, ".."
 	dd 0x0000001a
-	dd module.100e_end-module.100e_start
-	db 0x80
-	dw 0x0b
-	db 0x01, 0x01, 0x09, "8086:100E"
+	dd module.rtl8139_end-module.rtl8139_start
+	db 0x00
+	dw 0x0f
+	db 0x01, 0x01, 0x0d, "10EC:8139.dev"
 disk.dev_end:
 times 0x18 * 512 - ($ - $$) db 0
-module.100e_start:
-	dd 0x0000001a
-	dd module.100e_end-module.100e_start
-	db 0x80
-	dw 0x03
-	db 0x01, 0x01, 0x01, "."
-	dd 0x00000019
-	dd disk.dev_end-disk.dev_start
-	db 0x80
-	dw 0x04
-	db 0x01, 0x01, 0x02, ".."
-	dd 0x0000001b
-	dd module.100e_init_end-module.100e_init_start
-	db 0x00
-	dw 0x0a
-	db 0x01, 0x01, 0x08, "init.exe"
-module.100e_end:
+;section .rtl8139 vstart=0x25000
+module.rtl8139_start:
+	ret
+	mov eax, ebx
+	mov al, 0x04
+	call module.rtl8139_init_get
+	or al, 0x04
+	out dx, eax
+	mov eax, ebx
+	mov al, 0x10
+	call module.rtl8139_init_get
+	mov dx, ax
+	mov dl, 0x52
+	mov al, 0
+	out dx, al
+	mov dl, 0x37
+	mov al, 0x10
+	out dx, al
+module.rtl8139_init_reset:
+	in al, dx
+	test al, 0x10
+	jnz module.rtl8139_init_reset
+	mov dl, 0x30
+	mov eax, 0x25200
+	out dx, eax
+	mov dl, 0x3c
+	mov ax, 0x0005
+	out dx, ax
+	mov dl, 0x44
+	mov eax, 0x8f
+	out dx, eax
+	mov dl, 0x37
+	mov al, 0x0c
+	out dx, al
+	mov eax, ebx
+	mov al, 0x3c
+	push edx
+	call module.rtl8139_init_get
+	pop edx
+	movzx edi, al
+	lea edi, [0x1100+edi*8]
+	mov word[edi+6], 0x0002
+	mov word[edi], module.rtl8139_interrupt
+	mov dl, 0
+	mov ecx, 6
+	mov edi, module.rtl8139_mac
+module.rtl8139_mac_get:
+	insb
+	inc dl
+	loop module.rtl8139_mac_get
+	ret
+module.rtl8139_mac:
+	db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+module.rtl8139_init_get:
+	mov dx, 0xcf8
+	out dx, eax
+	mov dx, 0xcfc
+	in eax, dx
+	ret
+module.rtl8139_interrupt:
+	pushad
+	mov dx, word[0x7384]
+	mov dl, 0x3e
+	in ax, dx
+	test ax, 0x01
+	jnz module.rtl8139_recv
+	mov ax, 0x05
+	out dx, ax
+	popad
+	iretd
+module.rtl8139_recv:
+	cli
+	hlt
+module.rtl8139_end:
 times 0x19 * 512 - ($ - $$) db 0
-module.100e_init_start:
-	dw 0x8000
-	db 5, 5, 10, 10
-	dw module.100e_init_code-module.100e_init_name
-	dw module.100e_init_name-module.100e_init_start
-	dw module.100e_init_end-module.100e_init_code
-	dw module.100e_init_code-module.100e_init_start
+module.notepad:
+	dw 1000000000000000b
+	db 8, 8, 58, 68
+	dw module.notepad_code-module.notepad_title
+	dw module.notepad_title-module.notepad
+	dw module.notepad_end-module.notepad_code
+	dw module.notepad_code-module.notepad
 	dw 0, 0, 0, 0, 0
-module.100e_init_name:
-	db "E1000 Driver"
-module.100e_init_code:
+module.notepad_title:
+	db "Notepad"
+module.notepad_code:
+
 	jmp $
-module.100e_init_end:
+module.notepad_end:
 times 0x1a * 512 - ($ - $$) db 0

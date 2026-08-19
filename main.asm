@@ -935,25 +935,43 @@ module.keybd_check:
 	jb module.keybd_nprint
 	cmp bl, 0x66
 	ja module.keybd_nprint
+	test byte[0x740a], 0x0a
+	jnz module.keybd_nprint
 	movzx esi, bl
+	test byte[0x740a], 0x04
+	jnz module.keybd_shift
+	test byte[0x7413], 0x02
+	jnz module.keybd_shift
 	add esi, module.keybd_layout-0x0d
+module.after_keybdsh:
 	mov bh, byte[esi]
 module.keybd_nprint:
 	bt [0x7408], eax
 	jc module.keybd_y
 	mov al, 0x00
 	iretd
+module.keybd_shift:
+	add esi, module.keybd_shift_layout-0x0d
+	jmp module.after_keybdsh
 module.keybd_y:
 	mov al, 0x01
 	iretd
 module.keybd_layout:
-	db 0x09, '`', 0, 0, 0, 0, 0, 0, 'Q', '1', 0, 0, 0, 'Z'
-	db 'S', 'A', 'W', '2', 0, 0, 'C', 'X', 'D', 'E', '4', '3'
-	db 0, 0, ' ', 'V', 'F', 'T', 'R', '5', 0, 0, 'N', 'B', 'H'
-	db 'G', 'Y', '6', 0, 0, 0, 'M', 'J', 'U', '7', '8', 0, 0
-	db ',', 'K', 'I', 'O', '0', '9', 0, 0, '.', '/', 'L', ';'
-	db 'P', '-', 0, 0, 0, 0x27, 0, '[', '=', 0, 0, 0, 0, 0xd, ']'
-	db 0, '\', 0, 0, 0, 0, 0, 0, 0, 0, 0x7f
+	db 0x09, '`', 0, 0, 0, 0, 0, 0, 'q', '1', 0, 0, 0, 'z'
+	db 's', 'a', 'w', '2', 0, 0, 'c', 'x', 'd', 'e', '4', '3'
+	db 0, 0, ' ', 'v', 'f', 't', 'r', '5', 0, 0, 'n', 'b', 'h'
+	db 'g', 'y', '6', 0, 0, 0, 'm', 'j', 'u', '7', '8', 0, 0
+	db ',', 'k', 'i', 'o', '0', '9', 0, 0, '.', '/', 'l', ';'
+	db 'p', '-', 0, 0, 0, 0x27, 0, '[', '=', 0, 0, 0, 0, 0xd, ']'
+	db 0, '/', 0, 0, 0, 0, 0, 0, 0, 0, 0x7f
+module.keybd_shift_layout:
+	db 0x09, '~', 0, 0, 0, 0, 0, 0, 'Q', '!', 0, 0, 0, 'Z'
+	db 'S', 'A', 'W', '@', 0, 0, 'C', 'X', 'D', 'E', '$', '#'
+	db 0, 0, ' ', 'V', 'F', 'T', 'R', '%', 0, 0, 'N', 'B', 'H'
+	db 'G', 'Y', '^', 0, 0, 0, 'M', 'J', 'U', '&', '*', 0, 0
+	db ',', 'K', 'I', 'O', ')', '(', 0, 0, '>', '?', 'L', ':'
+	db 'P', '_', 0, 0, 0, 0x22, 0, '{', '+', 0, 0, 0, 0, 0xd, '}'
+	db 0, '?', 0, 0, 0, 0, 0, 0, 0, 0, 0x7f
 module.load:
 	mov bl, 0xff
 	call memory.kmalloc
@@ -1025,6 +1043,8 @@ disk.user_file_get:
 	call disk.get_file
 	iretd
 disk.get_file:
+	; edx=end
+	; esi=str
 	cli
 	mov eax, dword[0x7df6]
 	mov ecx, dword[0x7dfa]
@@ -1310,9 +1330,21 @@ ps2.x_overflow:
 ps2.x_underflow:
 	mov word[0x7400], 1279
 	jmp ps2.after_xflow
+ps2.keybd_wforin:
+	mov ecx, 0x80
+ps2.keybd_poll:
+	in al, 0x64
+	test al, 1
+	jnz ps2.keybd_poll_end
+	loop ps2.keybd_poll
+	pop eax
+	jmp ps2.no_end_task
+ps2.keybd_poll_end:
+	ret
 ps2.keyboard:
 	cli
 	pushad
+	call ps2.keybd_wforin
 	in al, 0x60
 	mov bx, 0
 	cmp al, 0xe0
@@ -1357,10 +1389,12 @@ ps2.no_end_task:
 	iretd
 ps2.anormal_key:
 	mov bl, 0x80
+	call ps2.keybd_wforin
 	in al, 0x60
 	jmp ps2.after_ak
 ps2.release_key:
 	mov bh, 0x80
+	call ps2.keybd_wforin
 	in al, 0x60
 	jmp ps2.after_rk
 memory.kfree:
@@ -2396,12 +2430,12 @@ disk.boot_start:
 	db 0x00
 	dw 0x0e
 	db 0x01, 0x01, 0x0c, "explorer.exe"
-	dd 0x0000001a
+	dd 0x00000019
 	dd module.notepad_end-module.notepad
 	db 0x00
 	dw 0x0d
 	db 0x01, 0x01, 0x0b, "notepad.exe"
-	dd 0x00000019
+	dd 0x00000018
 	dd module.rtl8139_end-module.rtl8139_start
 	db 0x00
 	dw 0x0f
@@ -2660,7 +2694,6 @@ window.font:
 	dd 010000111000000000000000000000b ; [
 	dd 100000100001000001000010000010b
 	dd 000100000100000000000000000000b ; \
-
 	dd 011100001000010000100001000010b
 	dd 000100111000000000000000000000b ; ]
 	dd 001000101010001000000000000000b
@@ -3159,5 +3192,6 @@ module.notepad_erase:
 	mov byte[edi], 0x20
 	jmp module.notepad_aftererase
 module.notepad_end:
-;times 0x2 * 512 - ($ - $$) db 0
-;times 0x5 * 512 - ($ - $$) db 0
+times 0x2 * 512 - ($ - $$) db 0
+module.tiny_
+times 0x3 * 512 - ($ - $$) db 0

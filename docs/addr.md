@@ -39,7 +39,6 @@ User content -> 0xb0000
 0x742c -> keyboard last clicked
 0x7500 -> kernel IPC
 0x7900 -> ldtsc
-0x7902 -> letter needed
 0x7b00 -> Interrupt Stack
 0x7c00 -> Kernel Stack
 0x7228 -> Address of VESA LFB

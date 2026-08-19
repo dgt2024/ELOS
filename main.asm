@@ -58,7 +58,7 @@ boot.vesa_loop:
 	mov ax, 0xe801
 	int 0x15
 	cmp ax, 0x3c00
-	;jb boot.low_mem
+	jb boot.low_mem
 	mov word[0x7308], bx
 	lgdt [boot.gdttable]
 	mov eax, cr0
@@ -133,8 +133,10 @@ boot.idtloop:
 	mov dword[0x7302], 0x1000
 	lidt [0x7300]
 	ret
-times 502 - ($ - $$) db 0
+times 494 - ($ - $$) db 0
 dd 0x00000010
+dd disk.clean_end-disk.clean
+dd 0x00000011
 dd disk.boot_end-disk.boot_start
 dw 0xaa55
 boot.exception:
@@ -168,8 +170,6 @@ kernel.run:
 	call scheduler.run
 	jmp kernel.run
 kernel.init:
-	; debug init
-	mov byte[0x7902], 'a'
 	; memory init
 	mov cx, word[0x7308]
 	shr cx, 4
@@ -342,9 +342,9 @@ kernel.init_err:
 	cli
 	hlt
 kernel.ld_symbols:
-	db "res/symbols.bin", 0
+	db "symbols.bin", 0
 kernel.ld_font:
-	db "res/font.bin", 0
+	db "font.bin", 0
 kernel.update_whole_page:
 	push eax
 	mov eax, cr3
@@ -560,7 +560,7 @@ kernel.exc_prog_nloop:
 	call scheduler.pkill
 	jmp scheduler.yield_directly
 kernel.exc_prog_dir:
-	db "bin/crash.exe", 0
+	db "crash.exe", 0
 kernel.exc_progn2:
 	db " has stopped working"
 kernel.exc_progn2_end:
@@ -603,6 +603,8 @@ kernel.service:
 	je disk.user_sector_get
 	cmp ah, 0x43
 	je scheduler.user_create
+	cmp ah, 0xfb
+	je module.keybd_check
 	cmp ah, 0xfc
 	je scheduler.yield
 	cmp ah, 0xfd
@@ -675,14 +677,12 @@ scheduler.yield:
 	mov dword[esp+0x20], eax
 	mov esp, 0x7bfc
 	pushad
-	mov edi, dword[0x7320]
-	cmp word[edi+0x2e], 0
-	je scheduler.no_button_prog
-	test byte[0x7404], 7
-	jz scheduler.no_button_prog
 	mov al, byte[0x730b]
 	cmp byte[0x7405], al
 	jne scheduler.no_button_prog
+	mov edi, dword[0x7320]
+	cmp word[edi+0x2e], 0
+	je scheduler.no_button_prog
 	sub dword[edi+0x24], 4
 	mov eax, dword[edi+0x24]
 	mov ebx, dword[edi+0x20]
@@ -928,6 +928,32 @@ scheduler.cut_code:
 	rep movsb
 	popad
 	jmp scheduler.after_code
+module.keybd_check:
+	movzx eax, bl
+	mov bl, byte[0x742c]
+	cmp bl, 0x0d
+	jb module.keybd_nprint
+	cmp bl, 0x66
+	ja module.keybd_nprint
+	movzx esi, bl
+	add esi, module.keybd_layout-0x0d
+	mov bh, byte[esi]
+module.keybd_nprint:
+	bt [0x7408], eax
+	jc module.keybd_y
+	mov al, 0x00
+	iretd
+module.keybd_y:
+	mov al, 0x01
+	iretd
+module.keybd_layout:
+	db 0x09, '`', 0, 0, 0, 0, 0, 0, 'Q', '1', 0, 0, 0, 'Z'
+	db 'S', 'A', 'W', '2', 0, 0, 'C', 'X', 'D', 'E', '4', '3'
+	db 0, 0, ' ', 'V', 'F', 'T', 'R', '5', 0, 0, 'N', 'B', 'H'
+	db 'G', 'Y', '6', 0, 0, 0, 'M', 'J', 'U', '7', '8', 0, 0
+	db ',', 'K', 'I', 'O', '0', '9', 0, 0, '.', '/', 'L', ';'
+	db 'P', '-', 0, 0, 0, 0x27, 0, '[', '=', 0, 0, 0, 0, 0xd, ']'
+	db 0, '\', 0, 0, 0, 0, 0, 0, 0, 0, 0x7f
 module.load:
 	mov bl, 0xff
 	call memory.kmalloc
@@ -967,13 +993,13 @@ module.pci_net:
 	push ecx
 	mov eax, ecx
 	mov ecx, 4
-	mov edi, module.pci_devfile2
+	mov edi, module.pci_devfile
 	call kernel.hex_loop
 	inc edi
 	mov ecx, 4
 	call kernel.hex_loop
 	push ebx
-	mov esi, module.pci_devfile1
+	mov esi, module.pci_devfile
 	mov edx, 0x25000
 	call disk.get_file
 	pop ebx
@@ -986,9 +1012,7 @@ module.pci_net:
 	mov dword[0x7380], ecx
 	mov dword[0x7384], ebx
 	jmp module.pci_poll
-module.pci_devfile1:
-	db "dev/"
-module.pci_devfile2:
+module.pci_devfile:
 	db "0000:0000.dev", 0
 module.pci_reg:
 	mov dx, 0xcf8
@@ -1112,11 +1136,8 @@ disk.next_dir:
 disk.user_sector_get:
 	mov eax, edx
 	call disk.fs_read
-	iretd 
-disk.fs_read:
-	; eax=sector
-	; ecx=sector count
-	; edi=dest
+	iretd
+disk.ata_setup:
 	xor ebx, ebx
 	mov dword[0x7500], eax
 	mov dword[0x7503], ebx
@@ -1140,18 +1161,17 @@ disk.fs_read:
 	mov dx, 0x1f5
 	mov al, byte[0x7502]
 	out dx, al
+	ret
+disk.fs_read:
+	; eax=sector
+	; ecx=sector count
+	; edi=dest
+	call disk.ata_setup
 	mov dx, 0x1f7
 	mov al, 0x20
 	out dx, al
 	movzx ecx, cl
-	push ecx
-	mov dx, 0x3f6
-	mov ecx, 4
-disk.fsr_400ns:
-	in al, dx
-	loop disk.fsr_400ns
-	pop ecx
-	call disk.ata_nbsy
+	call disk.ata_polling
 	in al, dx
 	xor al, 0x21
 	test al, 0x29
@@ -1166,6 +1186,41 @@ disk.fsr_400ns:
 	dec ecx
 	test ecx, ecx
 	jnz disk.fs_read
+	ret
+disk.fs_write:
+	; eax=sector
+	; ecx=sector count
+	; esi=ptr
+	call disk.ata_setup
+	mov dx, 0x1f7
+	mov al, 0x30
+	out dx, al
+	movzx ecx, cl
+	call disk.ata_polling
+	push ecx
+	mov ecx, 256
+	mov dx, 0x1f0
+	rep outsw
+	pop ecx
+	sub edi, 4
+	mov eax, dword[edi]
+	dec ecx
+	test ecx, ecx
+	jnz disk.fs_write
+	mov dx, 0x1f7
+	mov al, 0xe7
+	out dx, al
+	call disk.ata_polling
+	ret
+disk.ata_polling:
+	push ecx
+	mov dx, 0x3f6
+	mov ecx, 4
+disk.fsr_400ns:
+	in al, dx
+	loop disk.fsr_400ns
+	pop ecx
+	call disk.ata_nbsy
 	ret
 disk.ata_nbsy:
 	mov dx, 0x1f7
@@ -1270,9 +1325,14 @@ ps2.after_rk:
 	movzx eax, al
 	cmp bh, 0x80
 	je ps2.write_alkey_rel
+	mov byte[0x742c], al
 	bts [0x7408], eax
 	jmp ps2.after_walkrel
 ps2.write_alkey_rel:
+	cmp byte[0x742c], al
+	jne ps2.last_not_reset
+	mov byte[0x742c], 0
+ps2.last_not_reset:
 	btr [0x7408], eax
 ps2.after_walkrel:
 	xor eax, eax
@@ -1547,9 +1607,9 @@ window.save_for_wm:
 	mov word[0x742a], ax
 	jmp window.after_null
 window.winver_dir:
-	db "bin/winver.exe", 0
+	db "winver.exe", 0
 window.explorer_dir:
-	db "bin/explorer.exe", 0
+	db "explorer.exe", 0
 window.mouse_update:
 	mov dx, word[0x7406]
 	pushad
@@ -2299,85 +2359,55 @@ window.print_finish:
 	pop ecx
 	ret
 times 0xe * 512 - ($ - $$) db 0
-disk.boot_start:
-	dd 0x00000010
-	dd disk.boot_end-disk.boot_start
-	db 0x80
-	dw 0x03
-	db 0x01, 0x01, 0x01, "."
-	dd 0x00000011
-	dd disk.bin_end-disk.bin_start
-	db 0x80
-	dw 0x05
-	db 0x01, 0x01, 0x03, "bin"
-	dd 0x00000012
-	dd disk.res_end-disk.res_start
-	db 0x80
-	dw 0x05
-	db 0x01, 0x01, 0x03, "res"
-	dd 0x00000019
-	dd disk.dev_end-disk.dev_start
-	db 0x80
-	dw 0x05
-	db 0x01, 0x01, 0x03, "dev"
-disk.boot_end:
+disk.clean:
+	dd 0x0000001a
+	dd 0x00000003
+disk.clean_end:
 times 0xf * 512 - ($ - $$) db 0
-disk.bin_start:
+section .filesystem vstart=0x0
+disk.boot_start:
 	dd 0x00000011
-	dd disk.bin_end-disk.bin_start
+	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
-	dd 0x00000010
-	dd disk.boot_end-disk.boot_start
-	db 0x80
-	dw 0x04
-	db 0x01, 0x01, 0x02, ".."
-	dd 0x00000013
-	dd kernel.winver_end-kernel.winver
-	db 0x00
-	dw 0x0c
-	db 0x01, 0x01, 0x0a, "winver.exe"
 	dd 0x00000014
-	dd kernel.exc_progn1_end-kernel.exc_progn1
-	db 0x00
-	dw 0x0b
-	db 0x01, 0x01, 0x09, "crash.exe"
-	dd 0x00000018
-	dd window.explorer_end-window.explorer
-	db 0x00
-	dw 0x0e
-	db 0x01, 0x01, 0x0c, "explorer.exe"
-	dd 0x0000001b
-	dd module.notepad_end-module.notepad
-	db 0x00
-	dw 0x0d
-	db 0x01, 0x01, 0x0b, "notepad.exe"
-disk.bin_end:
-times 0x10 * 512 - ($ - $$) db 0
-disk.res_start:
-	dd 0x00000012
-	dd disk.res_end-disk.res_start
-	db 0x80
-	dw 0x03
-	db 0x01, 0x01, 0x01, "."
-	dd 0x00000010
-	dd disk.boot_end-disk.boot_start
-	db 0x80
-	dw 0x04
-	db 0x01, 0x01, 0x02, ".."
-	dd 0x00000015
 	dd window.font_end-window.font
 	db 0x00
 	dw 0x0a
 	db 0x01, 0x01, 0x08, "font.bin"
-	dd 0x00000017
+	dd 0x00000016
 	dd window.symbols_font_end-window.symbols_font
 	db 0x00
 	dw 0x0d
 	db 0x01, 0x01, 0x0b, "symbols.bin"
-disk.res_end:
-times 0x11 * 512 - ($ - $$) db 0
+	dd 0x00000012
+	dd kernel.winver_end-kernel.winver
+	db 0x00
+	dw 0x0c
+	db 0x01, 0x01, 0x0a, "winver.exe"
+	dd 0x00000013
+	dd kernel.exc_progn1_end-kernel.exc_progn1
+	db 0x00
+	dw 0x0b
+	db 0x01, 0x01, 0x09, "crash.exe"
+	dd 0x00000017
+	dd window.explorer_end-window.explorer
+	db 0x00
+	dw 0x0e
+	db 0x01, 0x01, 0x0c, "explorer.exe"
+	dd 0x0000001a
+	dd module.notepad_end-module.notepad
+	db 0x00
+	dw 0x0d
+	db 0x01, 0x01, 0x0b, "notepad.exe"
+	dd 0x00000019
+	dd module.rtl8139_end-module.rtl8139_start
+	db 0x00
+	dw 0x0f
+	db 0x01, 0x01, 0x0d, "10EC:8139.dev"
+disk.boot_end:
+times 0x1 * 512 - ($ - $$) db 0
 kernel.winver:
 	dw 1000000000000000b
 	db 10, 10, 55, 35
@@ -2454,7 +2484,7 @@ kernel.winver_nook:
 	call kernel.winver_reg
 	ret
 kernel.winver_end:
-times 0x12 * 512 - ($ - $$) db 0
+times 0x2 * 512 - ($ - $$) db 0
 kernel.exc_progn1:
 	dw 1000000000000000b
 	db 48, 56, 112, 73
@@ -2506,7 +2536,7 @@ kernel.exc_progn1_return:
 	int 0x30
 	ret
 kernel.exc_progn1_end:
-times 0x13 * 512 - ($ - $$) db 0
+times 0x3 * 512 - ($ - $$) db 0
 window.font:
 	dd 000000000000000000000000000000b
 	dd 000000000000000000000000000000b ; space
@@ -2637,7 +2667,7 @@ window.font:
 	dd 000000000000000000000000000000b ; ^
 	dd 000000000000000000000000000000b
 	dd 0x00000016
-times 0x14 * 512 - ($ - $$) db 0
+times 0x4 * 512 - ($ - $$) db 0
 	dd 000001111100000000000000000000b ; _
 	dd 010000010000010000000000000000b
 	dd 000000000000000000000000000000b ; `
@@ -2702,7 +2732,7 @@ times 0x14 * 512 - ($ - $$) db 0
 	dd 000000000000000010011010110010b
 	dd 000000000000000000000000000000b ; ~
 window.font_end:
-times 0x15 * 512 - ($ - $$) db 0
+times 0x5 * 512 - ($ - $$) db 0
 window.symbols_font:
 	db 00000000b
 	db 00000000b
@@ -2884,7 +2914,7 @@ window.symbols_font:
 	db 00111100b
 	db 00011000b
 window.symbols_font_end:
-times 0x16 * 512 - ($ - $$) db 0
+times 0x6 * 512 - ($ - $$) db 0
 window.explorer:
 	dw 1000000000000000b
 	db 10, 10, 50, 50
@@ -2956,6 +2986,8 @@ window.explorer_next_prop:
 window.explorer_button:
 	mov ah, 0xfe
 	int 0x30
+	test al, 0x01
+	jz window.explorer_skipbtn
 	cmp dl, 4
 	jbe window.explorer_skipbtn
 	movzx ecx, dl
@@ -3006,26 +3038,8 @@ window.explorer_unclick:
 	jnz window.explorer_unclick
 	ret
 window.explorer_end:
-times 0x17 * 512 - ($ - $$) db 0
-disk.dev_start:
-	dd 0x00000019
-	dd disk.dev_end-disk.dev_start
-	db 0x80
-	dw 0x03
-	db 0x01, 0x01, 0x01, "."
-	dd 0x00000010
-	dd disk.boot_end-disk.boot_start
-	db 0x80
-	dw 0x04
-	db 0x01, 0x01, 0x02, ".."
-	dd 0x0000001a
-	dd module.rtl8139_end-module.rtl8139_start
-	db 0x00
-	dw 0x0f
-	db 0x01, 0x01, 0x0d, "10EC:8139.dev"
-disk.dev_end:
-times 0x18 * 512 - ($ - $$) db 0
-;section .rtl8139 vstart=0x25000
+times 0x7 * 512 - ($ - $$) db 0
+section .rtl8139 vstart=0x25000
 module.rtl8139_start:
 	ret
 	mov eax, ebx
@@ -3099,7 +3113,7 @@ module.rtl8139_recv:
 	cli
 	hlt
 module.rtl8139_end:
-times 0x19 * 512 - ($ - $$) db 0
+times 0x1 * 512 - ($ - $$) db 0
 module.notepad:
 	dw 1000000000000000b
 	db 8, 8, 58, 68
@@ -3111,7 +3125,39 @@ module.notepad:
 module.notepad_title:
 	db "Notepad"
 module.notepad_code:
-
-	jmp $
+	mov ecx, 512
+	mov ah, 0x40
+	int 0x30
+	mov ebp, edi
+module.notepad_retry:
+	xor ebx, ebx
+	mov ah, 0xfb
+	int 0x30
+	cmp bh, 0x00
+	je module.notepad_retry
+	cmp bh, 0x7f
+	je module.notepad_erase
+	mov byte[edi], bh
+	inc edi
+module.notepad_aftererase:
+	pushad
+	mov esi, ebp
+	mov dx, 0x0000
+	mov ah, 0x00
+	int 0x30
+	popad
+	movzx ecx, bl
+module.notepad_wait:
+	mov ebx, ecx
+	mov ah, 0xfb
+	int 0x30
+	cmp bl, cl
+	je module.notepad_wait
+	jmp module.notepad_retry
+module.notepad_erase:
+	dec edi
+	mov byte[edi], 0x20
+	jmp module.notepad_aftererase
 module.notepad_end:
-times 0x1a * 512 - ($ - $$) db 0
+;times 0x2 * 512 - ($ - $$) db 0
+;times 0x5 * 512 - ($ - $$) db 0

@@ -36,7 +36,7 @@ User content -> 0xb0000
 0x7428 -> Mouse last btn
 0x7429 -> Mouse last process
 0x742a -> mouse coords before click
-0x742c -> keyboard i/o test
+0x742c -> keyboard last clicked
 0x7500 -> kernel IPC
 0x7900 -> ldtsc
 0x7902 -> letter needed

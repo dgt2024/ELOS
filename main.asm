@@ -930,6 +930,7 @@ scheduler.cut_code:
 	jmp scheduler.after_code
 module.keybd_check:
 	movzx eax, bl
+	mov bh, 0
 	mov bl, byte[0x742c]
 	cmp bl, 0x0d
 	jb module.keybd_nprint
@@ -1976,7 +1977,7 @@ window.double:
 	call kernel.update_whole_page
 	ret
 window.user_symbol:
-	push eax
+	push ebx
 	call window.get_data_prot
 	mov cx, bx
 	mov ax, word[edi]
@@ -2440,6 +2441,11 @@ disk.boot_start:
 	db 0x00
 	dw 0x0f
 	db 0x01, 0x01, 0x0d, "10EC:8139.dev"
+	dd 0x0000001a
+	dd module.tiny_cmd_end-module.tiny_cmd
+	db 0x00
+	dw 0x0a
+	db 0x01, 0x01, 0x08, "tiny.exe"
 disk.boot_end:
 times 0x1 * 512 - ($ - $$) db 0
 kernel.winver:
@@ -3163,6 +3169,8 @@ module.notepad_code:
 	int 0x30
 	mov ebp, edi
 module.notepad_retry:
+	mov ah, 0xfc
+	int 0x30
 	xor ebx, ebx
 	mov ah, 0xfb
 	int 0x30
@@ -3193,5 +3201,103 @@ module.notepad_erase:
 	jmp module.notepad_aftererase
 module.notepad_end:
 times 0x2 * 512 - ($ - $$) db 0
-module.tiny_
+module.tiny_cmd:
+	dw 1000000000000000b
+	db 12, 12, 52, 22
+	dw module.tiny_cmd_data-module.tiny_cmd_title
+	dw module.tiny_cmd_title-module.tiny_cmd
+	dw module.tiny_cmd_end-module.tiny_cmd_code
+	dw module.tiny_cmd_code-module.tiny_cmd
+	dw module.tiny_cmd_code-module.tiny_cmd_data
+	dw module.tiny_cmd_data-module.tiny_cmd
+	dw 0, 0, 0
+module.tiny_cmd_title:
+	db "Tiny"
+module.tiny_cmd_data:
+	db "OK", 0
+module.tiny_cmd_code:
+	pop esi
+	mov dx, 0x0101
+	mov bx, 0x2402
+	mov ah, 0x02
+	int 0x30
+	mov dx, 0x1105
+	mov bx, 0x0402
+	mov ah, 0x01
+	int 0x30
+	pop esi
+	mov dx, 0x1306
+	mov ah, 0x00
+	int 0x30
+	mov ah, 0x40
+	mov ecx, 512
+	int 0x30
+	push edi
+	mov ah, 0x40
+	mov ecx, 16
+	int 0x30
+	mov ebp, edi
+module.tiny_cmd_retry:
+	mov ah, 0xfc
+	int 0x30
+	mov ah, 0xfb
+	int 0x30
+	cmp bh, 0x7f
+	je module.tiny_cmd_erase
+	cmp bh, 0x00
+	je module.tiny_cmd_retry
+	cmp bh, 0x0d
+	je module.tiny_cmd_handle
+	mov byte[edi], bh
+	inc edi
+module.tiny_cmd_load:
+	pushad
+	mov dx, 0x0202
+	mov esi, ebp
+	mov ah, 0x00
+	int 0x30
+	popad
+	push ecx
+	mov ecx, ebx
+module.tiny_cmd_wait:
+	push esi
+	mov ah, 0xfb
+	int 0x30
+	pop esi
+	cmp bl, cl
+	je module.tiny_cmd_wait
+	pop ecx
+	jmp module.tiny_cmd_retry
+module.tiny_cmd_erase:
+	dec edi
+	mov byte[edi], 0x20
+	jmp module.tiny_cmd_load
+module.tiny_cmd_handle:
+	mov edi, ebp
+	xor eax, eax
+	times 4 stosd
+	mov al, byte[ebp]
+	cmp al, 'r'
+	je module.tiny_cmd_root
+module.tiny_cmd_load_wr:
+	pushad
+	mov dx, 0x0202
+	mov esi, ebp
+	mov ah, 0x00
+	int 0x30
+	popad
+	mov edi, ebp
+	jmp module.tiny_cmd_retry
+module.tiny_cmd_root:
+	mov edi, dword[esp]
+	pushad
+	xor edx, edx
+	mov ecx, 1
+	mov ah, 0x42
+	int 0x30
+	popad
+	mov esi, dword[edi+0x1f6]
+	mov ecx, dword[edi+0x1fa]
+	jmp module.tiny_cmd_load_wr
+module.tiny_cmd_end:
 times 0x3 * 512 - ($ - $$) db 0

@@ -50,6 +50,24 @@ User content -> 0xb0000
 0x25000-0x25200+ -> NET init
 0x25200-0x26000 -> NET scrap memory
 
+# ABI
+AH=0x00 CreateText		DX=POS, ESI=STR, ECX=LEN
+AH=0x01 CreateButton	DX=POS, BX=SIZE
+AH=0x02 CreateSquare	DX=POS, BX=SIZE
+AH=0x03 CreateSymbol	BL=CHAR
+AH=0x04 Clear
+
+AH=0x40 MemoryAlloc		ECX=AMOUNT > EDI=PTR
+AH=0x41 ReadFile		ESI=STR, EDX=PTR > ECX=SIZE, EDI=END
+AH=0x42 ReadSector		EDX=SECTOR, ECX=COUNT, EDI=PTR
+AH=0x43 StartProcess	EDX=PTR(ELOS6 EXECUTABLE)
+
+AH=0xFB GetKeyboard		BL=KEY > BH=ASCII, BL=SCANCODE, AL=KEY_STAT
+AH=0xFC Yield
+AH=0xFD Exit
+AH=0xFE	GetWindow		> AL=BUTTONS, DX=PTR(INLINE), EDI=W_PTR
+AH=0xFF RegisterCall	SI=OFFSET
+
 # Structs
 struct pcb {
 	0 dword edi

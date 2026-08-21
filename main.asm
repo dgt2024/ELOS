@@ -1374,7 +1374,7 @@ ps2.after_walkrel:
 	jnc ps2.no_end_task
 	mov al, 0x0c
 	bt [0x7408], eax
-	jnc ps2.no_end_task
+	jnc ps2.maybe_tiny
 	cmp byte[0x7405], 0
 	je ps2.no_end_task
 	mov al, byte[0x7405]
@@ -1388,6 +1388,18 @@ ps2.no_end_task:
 	out 0x20, al
 	popad
 	iretd
+ps2.maybe_tiny:
+	mov al, 0x2c
+	bt [0x7408], eax
+	jnc ps2.no_end_task
+	mov esi, ps2.tiny_str
+	mov edx, 0x7500
+	call disk.get_file
+	mov edx, 0x7500
+	call scheduler.create
+	jmp ps2.no_end_task
+ps2.tiny_str:
+	db "tiny.exe", 0
 ps2.anormal_key:
 	mov bl, 0x80
 	call ps2.keybd_wforin
@@ -3240,8 +3252,10 @@ module.tiny_cmd_code:
 module.tiny_cmd_retry:
 	mov ah, 0xfc
 	int 0x30
+	push esi
 	mov ah, 0xfb
 	int 0x30
+	pop esi
 	cmp bh, 0x7f
 	je module.tiny_cmd_erase
 	cmp bh, 0x00
@@ -3273,14 +3287,17 @@ module.tiny_cmd_erase:
 	mov byte[edi], 0x20
 	jmp module.tiny_cmd_load
 module.tiny_cmd_handle:
-	mov edi, ebp
-	xor eax, eax
-	times 4 stosd
 	mov al, byte[ebp]
-	cmp al, 'r'
+	cmp al, '/'
 	je module.tiny_cmd_root
+	cmp al, 'r'
+	je module.tiny_cmd_run
 module.tiny_cmd_load_wr:
 	pushad
+	mov edi, ebp
+	mov al, 0x20
+	mov ecx, 16
+	rep stosb
 	mov dx, 0x0202
 	mov esi, ebp
 	mov ah, 0x00
@@ -3299,5 +3316,89 @@ module.tiny_cmd_root:
 	mov esi, dword[edi+0x1f6]
 	mov ecx, dword[edi+0x1fa]
 	jmp module.tiny_cmd_load_wr
+module.tiny_cmd_run:
+	mov edi, dword[esp]
+	pushad
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	mov edx, esi
+	mov ah, 0x42
+	int 0x30
+	popad
+	pushad
+	mov esi, dword[esp]
+	mov ebp, ecx
+module.tiny_cmd_reloop:
+	push esi
+	test byte[esi+8], 0x80
+	jnz module.tiny_cmd_nextf
+	movzx ecx, byte[esi+11]
+	add esi, 12
+module.tiny_cmd_search:
+	cmp byte[esi], 0x01
+	jne module.tiny_cmd_nextprop
+	pushad
+	mov edi, dword[esp+44]
+	mov al, 0x20
+	mov ecx, 0xffffffff
+	repne scasb
+	sub edi, dword[esp+44]
+	sub edi, 2
+	mov dword[esp+0x14], edi
+	popad
+	cmp byte[esi+1], dl
+	jne module.tiny_cmd_nextf
+	pushad
+	movzx ecx, dl
+	add esi, 2
+	mov edi, dword[esp+44]
+	inc edi
+module.tiny_cmd_strcmp:
+	lodsb
+	scasb
+	jne module.tiny_cmd_fscmp
+	loop module.tiny_cmd_strcmp
+	popad
+	pop esi
+	mov edi, dword[esp]
+	mov edx, dword[esi]
+	mov ecx, dword[esi+4]
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	mov ah, 0x42
+	int 0x30
+	pop edx
+	mov ah, 0x43
+	int 0x30
+	mov ah, 0xfd
+	int 0x30
+module.tiny_cmd_fscmp:
+	popad
+	loop module.tiny_cmd_search
+module.tiny_cmd_no_run:
+	popad
+	jmp module.tiny_cmd_load_wr
+module.tiny_cmd_nextprop:
+	push edx
+	movzx edx, byte[esi+1]
+	add esi, edx
+	inc esi
+	pop edx
+	loop module.tiny_cmd_search
+module.tiny_cmd_nextf:
+	pop esi
+	push edx
+	movzx edx, word[esi+9]
+	add esi, edx
+	pop edx
+	add esi, 12
+	push esi
+	sub esi, dword[esp+36]
+	cmp esi, ebp
+	pop esi
+	jb module.tiny_cmd_reloop
+	jmp module.tiny_cmd_no_run
 module.tiny_cmd_end:
 times 0x3 * 512 - ($ - $$) db 0

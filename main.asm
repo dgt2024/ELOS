@@ -316,23 +316,10 @@ kernel.init:
 	mov ax, 0x28
 	ltr ax
 	; video init
-	xor edx, edx
-	mov ecx, 160*128
-kernel.init_wp:
-	push ecx
-	push edx
-	call window.no_wnd
-	pop edx
-	pop ecx
-	inc dh
-	cmp dh, 160
-	jae kernel.init_wpdown
-	loop kernel.init_wp
-	ret
-kernel.init_wpdown:
-	mov dh, 0
-	inc dl
-	loop kernel.init_wp
+	mov edi, 0xf0000000
+	mov ecx, 1280*1024
+	mov eax, 0x008080
+	rep stosd
 	ret
 kernel.init_err:
 	mov edi, 0xf0000000
@@ -375,6 +362,7 @@ kernel.ps2_err:
 	hlt
 kernel.print_escr:
 	cli
+	cld
 	push ecx
 	push esi
 	push eax
@@ -729,7 +717,7 @@ scheduler.pkill:
 	mov ebx, dword[esi+0x30]
 	test ebx, ebx
 	jz scheduler.pkill_skip_wnd
-	invlpg [ebx]
+	call kernel.update_whole_page
 	mov ebx, dword[ebx]
 	mov dword[0x7500], ebx
 	sub byte[0x7501], 2
@@ -757,6 +745,7 @@ scheduler.user_create:
 scheduler.create:
 	inc byte[0x730a]
 	mov esi, 0x2002c
+	cld
 scheduler.find_space:
 	lodsb
 	add esi, 0x3f
@@ -1080,7 +1069,10 @@ disk.direct:
 	pop ecx
 	pop edi
 	add edi, ecx
-	mov ah, 0x00
+	ret
+disk.fs_err:
+	add esp, 0x14
+	mov ah, 0x01
 	ret
 disk.search_file:
 	sub ebx, esi
@@ -1090,9 +1082,11 @@ disk.search_file:
 	dec ecx
 	shr ecx, 9
 	inc ecx
-	mov edi, 0x7500
+	mov edi, 0x26000
 	call disk.fs_read
-	mov ebp, 0x7500
+	cmp ah, 0x01
+	je disk.fs_err
+	mov ebp, 0x26000
 	push ebp
 disk.check_dir:
 	cmp byte[0x7700], 0x00
@@ -1148,8 +1142,7 @@ disk.next_dir:
 	lea ebp, [ebp+edx+12]
 	push ebp
 	mov edx, dword[esp+4]
-	add edx, 0x7500
-	cmp ebp, edx
+	cmp edx, ebp
 	jb disk.check_dir
 	add esp, 20
 	mov ah, 0x01
@@ -1187,6 +1180,7 @@ disk.fs_read:
 	; eax=sector
 	; ecx=sector count
 	; edi=dest
+	movzx ecx, cl
 	call disk.ata_setup
 	mov dx, 0x1f7
 	mov al, 0x20
@@ -1393,9 +1387,9 @@ ps2.maybe_tiny:
 	bt [0x7408], eax
 	jnc ps2.no_end_task
 	mov esi, ps2.tiny_str
-	mov edx, 0x7500
+	mov edx, 0x26000
 	call disk.get_file
-	mov edx, 0x7500
+	mov edx, 0x26000
 	call scheduler.create
 	jmp ps2.no_end_task
 ps2.tiny_str:
@@ -1421,6 +1415,8 @@ memory.kfree_loop:
 memory.kfree_end:
 	ret
 memory.kmalloc:
+	pushf
+	cld
 	mov edi, 0x10000
 	mov ecx, 0x10000
 	mov al, 0
@@ -1429,6 +1425,7 @@ memory.kmalloc:
 	sub edi, 0x10000
 	shl edi, 12
 	add edi, 0xff000
+	popf
 	ret
 memory.user_malloc:
 	mov esi, dword[0x7320]
@@ -1575,12 +1572,12 @@ window.window_moves:
 	cmp dh, 32
 	ja window.after_winver
 	pushad
-	mov edx, 0x7500
+	mov edx, 0x26000
 	mov esi, window.winver_dir
 	call disk.get_file
 	cmp ah, 0x01
 	je kernel.init_err
-	mov edx, 0x7500
+	mov edx, 0x26000
 	xor ebp, ebp
 	call scheduler.create
 	popad
@@ -1589,12 +1586,12 @@ window.after_winver:
 	cmp dh, 42
 	ja window.after_iwm
 	pushad
-	mov edx, 0x7500
+	mov edx, 0x26000
 	mov esi, window.explorer_dir
 	call disk.get_file
 	cmp ah, 0x01
 	je kernel.init_err
-	mov edx, 0x7500
+	mov edx, 0x26000
 	xor ebp, ebp
 	call scheduler.create
 	popad
@@ -2608,7 +2605,7 @@ window.font:
 	dd 000000000000000000000000000000b ; '
 	dd 000100010001000010000100001000b
 	dd 001000001000000000000000000000b ; (
-	dd 010000010001000010000100001000b
+	dd 010000010000010000100001000010b
 	dd 001000100000000000000000000000b ; )
 	dd 010100010001010000000000000000b
 	dd 000000000000000000000000000000b ; *
@@ -3312,7 +3309,10 @@ module.tiny_cmd_root:
 	mov ecx, 1
 	mov ah, 0x42
 	int 0x30
+	mov dword[esp+0x1c], eax
 	popad
+	cmp ah, 0x01
+	je module.tiny_cmd_load_wr
 	mov esi, dword[edi+0x1f6]
 	mov ecx, dword[edi+0x1fa]
 	jmp module.tiny_cmd_load_wr
@@ -3369,6 +3369,8 @@ module.tiny_cmd_strcmp:
 	inc ecx
 	mov ah, 0x42
 	int 0x30
+	cmp ah, 0x01
+	je module.tiny_cmd_retry
 	pop edx
 	mov ah, 0x43
 	int 0x30

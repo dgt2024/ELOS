@@ -49,6 +49,7 @@ Userland -> 0x10000000
 0x24800-0x25000 -> IPC (todo)
 0x25000-0x25200+ -> NET init
 0x25200-0x26000 -> NET scrap memory
+0x26000-0x27000 -> Disk Scrap memory
 
 # ABI
 AH=0x00 CreateText		DX=POS, ESI=STR, ECX=LEN

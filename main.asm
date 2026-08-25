@@ -591,6 +591,8 @@ kernel.service:
 	je disk.user_sector_get
 	cmp ah, 0x43
 	je scheduler.user_create
+	cmp ah, 0x44
+	je disk.user_file_find
 	cmp ah, 0xfb
 	je module.keybd_check
 	cmp ah, 0xfc
@@ -1032,6 +1034,21 @@ disk.user_file_get:
 	mov edx, edi
 	call disk.get_file
 	iretd
+disk.user_file_find:
+	; ecx=ptr
+	; ebx=sector
+	; edx=ptr_to_write(NULL=nowrite)
+	; esi=filename
+	; return:
+	; eax=sector
+	; ecx=size
+	mov eax, ebx
+	mov ebx, esi
+	push disk.after_find_file
+	push edx
+	jmp disk.find_file
+disk.after_find_file:
+	iretd
 disk.get_file:
 	; edx=end
 	; esi=str
@@ -1061,12 +1078,15 @@ disk.found_file:
 	call disk.search_file
 disk.direct:
 	mov edi, dword[esp]
+	test edi, edi
+	jz disk.direct_no_write
 	push ecx
 	dec ecx
 	shr ecx, 9
 	inc ecx
 	call disk.fs_read
 	pop ecx
+disk.direct_no_write:
 	pop edi
 	add edi, ecx
 	ret
@@ -3317,90 +3337,25 @@ module.tiny_cmd_root:
 	mov ecx, dword[edi+0x1fa]
 	jmp module.tiny_cmd_load_wr
 module.tiny_cmd_run:
-	mov edi, dword[esp]
-	pushad
-	dec ecx
-	shr ecx, 9
-	inc ecx
-	mov edx, esi
-	mov ah, 0x42
-	int 0x30
-	popad
-	pushad
-	mov esi, dword[esp]
-	mov ebp, ecx
-module.tiny_cmd_reloop:
-	push esi
-	test byte[esi+8], 0x80
-	jnz module.tiny_cmd_nextf
-	movzx ecx, byte[esi+11]
-	add esi, 12
-module.tiny_cmd_search:
-	cmp byte[esi], 0x01
-	jne module.tiny_cmd_nextprop
-	pushad
-	mov edi, dword[esp+44]
-	mov al, 0x20
+	push ecx
+	mov edi, ebp
 	mov ecx, 0xffffffff
+	mov al, 0x20
 	repne scasb
-	sub edi, dword[esp+44]
-	sub edi, 2
-	mov dword[esp+0x14], edi
-	popad
-	cmp byte[esi+1], dl
-	jne module.tiny_cmd_nextf
-	pushad
-	movzx ecx, dl
-	add esi, 2
-	mov edi, dword[esp+44]
-	inc edi
-module.tiny_cmd_strcmp:
-	lodsb
-	scasb
-	jne module.tiny_cmd_fscmp
-	loop module.tiny_cmd_strcmp
-	popad
-	pop esi
-	mov edi, dword[esp]
-	mov edx, dword[esi]
-	mov ecx, dword[esi+4]
-	dec ecx
-	shr ecx, 9
-	inc ecx
-	mov ah, 0x42
+	mov byte[edi-1], 0
+	pop ecx
+	mov edx, dword[esp+32]
+	mov ebx, esi
+	mov esi, ebp
+	inc esi
+	mov ah, 0x44
 	int 0x30
 	cmp ah, 0x01
-	je module.tiny_cmd_retry
-	pop edx
+	je module.tiny_cmd_load_wr
+	mov edx, dword[esp+32]
 	mov ah, 0x43
 	int 0x30
 	mov ah, 0xfd
 	int 0x30
-module.tiny_cmd_fscmp:
-	popad
-	loop module.tiny_cmd_search
-module.tiny_cmd_no_run:
-	popad
-	jmp module.tiny_cmd_load_wr
-module.tiny_cmd_nextprop:
-	push edx
-	movzx edx, byte[esi+1]
-	add esi, edx
-	inc esi
-	pop edx
-	loop module.tiny_cmd_search
-module.tiny_cmd_nextf:
-	pop esi
-	push edx
-	movzx edx, word[esi+9]
-	add esi, edx
-	pop edx
-	add esi, 12
-	push esi
-	sub esi, dword[esp+36]
-	cmp esi, ebp
-	pop esi
-	jb module.tiny_cmd_reloop
-	jmp module.tiny_cmd_no_run
 module.tiny_cmd_end:
-times 0x3 * 512 - ($ - $$) db 0
+times 0x3 * 51A2 - ($ - $$) db 0

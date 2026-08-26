@@ -929,6 +929,11 @@ module.keybd_check:
 	ja module.keybd_nprint
 	test byte[0x740a], 0x0a
 	jnz module.keybd_nprint
+	push eax
+	mov al, byte[0x7405]
+	cmp al, byte[0x730b]
+	pop eax
+	jne module.keybd_nprint
 	movzx esi, bl
 	test byte[0x740a], 0x04
 	jnz module.keybd_shift
@@ -2493,7 +2498,7 @@ kernel.winver_data:
 	db "ELOS6.1", 0
 	db "Enhanced Lightweight OS", 0
 	db "Version: 6.1", 0
-	db "Build: 2026.08.06", 0
+	db "Build: 2026.08.25", 0
 	db "Architecture: IA-32", 0
 	db "Copyright 2025-2026 @dgt2024", 0
 	db "OK", 0
@@ -3344,7 +3349,7 @@ module.tiny_cmd_run:
 	repne scasb
 	mov byte[edi-1], 0
 	pop ecx
-	mov edx, dword[esp+32]
+	mov edx, dword[esp]
 	mov ebx, esi
 	mov esi, ebp
 	inc esi
@@ -3352,10 +3357,10 @@ module.tiny_cmd_run:
 	int 0x30
 	cmp ah, 0x01
 	je module.tiny_cmd_load_wr
-	mov edx, dword[esp+32]
+	pop edx
 	mov ah, 0x43
 	int 0x30
 	mov ah, 0xfd
 	int 0x30
 module.tiny_cmd_end:
-times 0x3 * 51A2 - ($ - $$) db 0
+times 0x3 * 512 - ($ - $$) db 0

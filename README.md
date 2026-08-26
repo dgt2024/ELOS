@@ -2,25 +2,41 @@
 
 **Enhanced Lightweight Operating System v6.1**
 
-It's part of the ELOS operating system family, which was
-created in august 2025, where ELOS6 was begun in July 2026
-and the latest version, a "branch" from ELOS6, begun in
-August of the same year
+ELOS is an operating system family created in August 2025. ELOS6 was started in July 2026, with ELOS6.1 beginning in August 2026 as a branch of ELOS6.
 
 A tiny x86 IA-32 Operating System written entirely in Assembly.
 
-It's an experiment in building an operating system from the
-ground up as it doesn't run on top of Linux/GRUB; whilst
-keeping the system small, and understandable.
+It's an experiment in building an operating system from the ground up, without relying on Linux or GRUB, while keeping the system small and understandable.
+
+![Latest](docs/img/latest.png)
+
+# Features
+
+## NOTE: ELOS6.1 is STILL in development, expect more
+
+- 32-bit IA-32 x86 kernel
+- Preemptive userland multitasking
+- Paging-based dynamic memory and heap management
+- Windowing compositor
+- Simple ABI
+- Custom filesystem and executable format
+- PS/2 Keyboard and mouse support
+- File explorer
+- Notepad
+- Tiny command prompt
+- Exception handling (BSOD/Crash)
+- System clock and date
 
 # General Data
 
 ## Minimum Requirements
 
-- 80386+/IA-32 Compatible CPU
-- 1.1 MB RAM Minimum
+- 80386+/IA-32 compatible CPU
+- 1.1 MB RAM minimum
 - VGA/VESA-compatible display
-- PS/2 Keyboard/Mouse (working on PCI USB drivers)
+- PS/2 keyboard/mouse (working on PCI USB drivers)
+- Intel 8253/8254 Chip
+- ATA/PATA disk as the primary master drive
 
 ## Building
 
@@ -32,16 +48,12 @@ keeping the system small, and understandable.
 
 ## ELOS6
 
-This was one of the first GUI outputs had which is now the
-base of the whole windowing system...
+This was one of the first GUI outputs I made, and it became the foundation of the entire windowing system.
 
 ![First Window](docs/img/first_window.png)
 ![Second Window](docs/img/test_wnd2.png)
 
-This windowing system was actually built on top of the idea
-that came from ELOS2 (an idea discarded in November 2025,
-due to very few modularity), funnily, the font comes back
-from ELOS1 (discarded in August 2025 due to unstability).
+This windowing system was actually built on an idea that came from ELOS2, which was discarded in November 2025 due to its lack of modularity. Interestingly, the font also came back from ELOS1, which was discarded in August 2025 due to instability.
 
 ![First Print](docs/img/first_print.png)
 ![Second Print](docs/img/first_print2.png)
@@ -53,17 +65,12 @@ font manually!
 ![First Button](docs/img/first_btn.png)
 ![Second Button](docs/img/clear_btn.png)
 
-And this is very probably the last ELOS version that will be
-made as I feel proud myself, of the modularity and the
-architecture I got out of this...
+And this was very probably the last ELOS version I would make, as I was already proud of the modularity and architecture I had achieved.
 
 ![First Calc](docs/img/calc_1.png)
 ![Second Calc](docs/img/calc_2.png)
 
-The calculator was one of the first ideas I got to test the
-GUI ABI and so it was the first GUI app (altough not
-functional) made on ELOS6... altough it got to be the first
-userland application ran :D
+The calculator was one of the first ideas I had for testing the GUI ABI, making it the first GUI application created for ELOS6. Although it wasn't functional at the time, it became the first userland application to run on ELOS6. :D
 
 ![Cyan](docs/img/cyan.png)
 
@@ -89,13 +96,14 @@ which I won't be bothered to search).
 Here we get to ELOS6.1, which is simply a better (and fuller)
 version of ELOS6 that added userland applications and a top
 status bar showing the hour and some shortcuts to start
-applications
+applications.
 
 ![Bug](docs/img/bug_2wnd.png)
 ![Top Winver](docs/img/clock_winver.png)
 
-Then I added a filesystem (which had been in development since I was finishing ELOS6) and added an app to look up to
-it, and fixed the bug we saw just earlier.
+Then I added a filesystem (which had been in development
+since I was finishing ELOS6) and added an app to look to
+browse it, and fixed the bug we saw just earlier.
 
 ![Explorer](docs/img/explorer.png)
 ![Fix bug](docs/img/2wnd.png)

@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x0210
+	mov ax, 0x0211
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -134,9 +134,9 @@ boot.idtloop:
 	lidt [0x7300]
 	ret
 times 494 - ($ - $$) db 0
-dd 0x00000010
-dd disk.clean_end-disk.clean
 dd 0x00000011
+dd disk.clean_end-disk.clean
+dd 0x00000012
 dd disk.boot_end-disk.boot_start
 dw 0xaa55
 boot.exception:
@@ -169,6 +169,10 @@ kernel.main:
 kernel.run:
 	call scheduler.run
 	jmp kernel.run
+kernel.init_dname:
+	db ".", 0
+kernel.init_fname:
+	db "sample", 0
 kernel.init:
 	; memory init
 	mov cx, word[0x7308]
@@ -315,6 +319,10 @@ kernel.init:
 	mov word[0x560], 0xffff
 	mov ax, 0x28
 	ltr ax
+	; debug stuff
+	mov esi, kernel.init_dname
+	mov ebp, kernel.init_fname
+	call disk.create_file
 	; video init
 	mov edi, 0xf0000000
 	mov ecx, 1280*1024
@@ -929,10 +937,14 @@ module.keybd_check:
 	ja module.keybd_nprint
 	test byte[0x740a], 0x0a
 	jnz module.keybd_nprint
-	push eax
-	mov al, byte[0x7405]
-	cmp al, byte[0x730b]
-	pop eax
+	pushad
+	mov edi, 0x24000
+	xor eax, eax
+	mov ecx, 0xffffffff
+	repne scasd
+	mov esi, dword[0x7320]
+	cmp esi, dword[edi-8]
+	popad
 	jne module.keybd_nprint
 	movzx esi, bl
 	test byte[0x740a], 0x04
@@ -1047,13 +1059,64 @@ disk.user_file_find:
 	; return:
 	; eax=sector
 	; ecx=size
+	cli
 	mov eax, ebx
+	mov ebx, esi
+	call disk.mfind_file
+	iretd
+disk.mfind_file:
+	; ecx=size
+	; eax=sector
+	; edx=ptr_to_write(NULL=nowrite)
+	; esi=filename
+	; return:
+	; ebx=sector
+	; ecx=size
 	mov ebx, esi
 	push disk.after_find_file
 	push edx
 	jmp disk.find_file
 disk.after_find_file:
-	iretd
+	ret
+disk.create_file:
+	; esi=directory
+	; ebp=filename
+	cli
+	push ebp
+	mov eax, dword[0x7df6]
+	mov ecx, dword[0x7dfa]
+	mov edx, 0x26000
+	call disk.mfind_file
+	pop ebp
+	push ecx
+	lea edi, [0x26000+ecx]
+	push edi
+	mov edi, ebp
+	mov ecx, 0xffffffff
+	mov al, 0
+	repne scasb
+	pop edi
+	not ecx
+	dec ecx
+	add dword[0x26004], ecx
+	add dword[0x26004], 14
+	mov byte[edi+8], 0
+	mov word[edi+9], cx
+	add word[edi+9], 2
+	mov word[edi+11], 0x0101
+	mov byte[edi+13], cl
+	add edi, 14
+	mov esi, ebp
+	rep movsb
+	pop ecx
+	mov eax, ebx
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	mov esi, 0x26000
+	call disk.fs_write
+	cli
+	hlt
 disk.get_file:
 	; edx=end
 	; esi=str
@@ -1083,17 +1146,21 @@ disk.found_file:
 	call disk.search_file
 disk.direct:
 	mov edi, dword[esp]
+	mov ebx, eax
 	test edi, edi
 	jz disk.direct_no_write
+	push ebx
 	push ecx
 	dec ecx
 	shr ecx, 9
 	inc ecx
 	call disk.fs_read
 	pop ecx
+	pop ebx
 disk.direct_no_write:
 	pop edi
 	add edi, ecx
+	mov ah, 0x00
 	ret
 disk.fs_err:
 	add esp, 0x14
@@ -1148,6 +1215,7 @@ disk.check_name:
 	mov ecx, dword[ebp+4]
 	inc esi
 	mov ebx, esi
+	mov ah, 0x00
 	ret
 disk.diff_name:
 	pop ebp
@@ -1167,7 +1235,8 @@ disk.next_dir:
 	lea ebp, [ebp+edx+12]
 	push ebp
 	mov edx, dword[esp+4]
-	cmp edx, ebp
+	add edx, 0x26000
+	cmp ebp, edx
 	jb disk.check_dir
 	add esp, 20
 	mov ah, 0x01
@@ -2427,55 +2496,55 @@ window.print_skip:
 window.print_finish:
 	pop ecx
 	ret
-times 0xe * 512 - ($ - $$) db 0
+times 0xf * 512 - ($ - $$) db 0
 disk.clean:
-	dd 0x0000001a
+	dd 0x0000001c
 	dd 0x00000003
 disk.clean_end:
-times 0xf * 512 - ($ - $$) db 0
+times 0x10 * 512 - ($ - $$) db 0
 section .filesystem vstart=0x0
 disk.boot_start:
-	dd 0x00000011
+	dd 0x00000012
 	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
-	dd 0x00000014
+	dd 0x00000015
 	dd window.font_end-window.font
 	db 0x00
 	dw 0x0a
 	db 0x01, 0x01, 0x08, "font.bin"
-	dd 0x00000016
+	dd 0x00000017
 	dd window.symbols_font_end-window.symbols_font
 	db 0x00
 	dw 0x0d
 	db 0x01, 0x01, 0x0b, "symbols.bin"
-	dd 0x00000012
+	dd 0x00000013
 	dd kernel.winver_end-kernel.winver
 	db 0x00
 	dw 0x0c
 	db 0x01, 0x01, 0x0a, "winver.exe"
-	dd 0x00000013
+	dd 0x00000014
 	dd kernel.exc_progn1_end-kernel.exc_progn1
 	db 0x00
 	dw 0x0b
 	db 0x01, 0x01, 0x09, "crash.exe"
-	dd 0x00000017
+	dd 0x00000018
 	dd window.explorer_end-window.explorer
 	db 0x00
 	dw 0x0e
 	db 0x01, 0x01, 0x0c, "explorer.exe"
-	dd 0x00000019
+	dd 0x0000001a
 	dd module.notepad_end-module.notepad
 	db 0x00
 	dw 0x0d
 	db 0x01, 0x01, 0x0b, "notepad.exe"
-	dd 0x00000018
+	dd 0x00000019
 	dd module.rtl8139_end-module.rtl8139_start
 	db 0x00
 	dw 0x0f
 	db 0x01, 0x01, 0x0d, "10EC:8139.dev"
-	dd 0x0000001a
+	dd 0x0000001b
 	dd module.tiny_cmd_end-module.tiny_cmd
 	db 0x00
 	dw 0x0a
@@ -3364,3 +3433,4 @@ module.tiny_cmd_run:
 	int 0x30
 module.tiny_cmd_end:
 times 0x3 * 512 - ($ - $$) db 0
+times 0x6 * 512 - ($ - $$) db 0

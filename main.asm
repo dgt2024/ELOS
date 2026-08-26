@@ -170,7 +170,7 @@ kernel.run:
 	call scheduler.run
 	jmp kernel.run
 kernel.init_dname:
-	db ".", 0
+	db ".", 0, 0, 0, 0
 kernel.init_fname:
 	db "sample", 0
 kernel.init:
@@ -1082,12 +1082,15 @@ disk.create_file:
 	; esi=directory
 	; ebp=filename
 	cli
-	push ebp
 	mov eax, dword[0x7df6]
 	mov ecx, dword[0x7dfa]
 	mov edx, 0x26000
+	pushad
+	push ebp
 	call disk.mfind_file
+	cmp ah, 0x01
 	pop ebp
+	je disk.no_folder
 	push ecx
 	lea edi, [0x26000+ecx]
 	push edi
@@ -1100,11 +1103,13 @@ disk.create_file:
 	dec ecx
 	add dword[0x26004], ecx
 	add dword[0x26004], 14
+	mov dword[edi+4], 0
 	mov byte[edi+8], 0
 	mov word[edi+9], cx
 	add word[edi+9], 2
 	mov word[edi+11], 0x0101
 	mov byte[edi+13], cl
+	mov dword[0x7704], ecx
 	add edi, 14
 	mov esi, ebp
 	rep movsb
@@ -1115,8 +1120,55 @@ disk.create_file:
 	inc ecx
 	mov esi, 0x26000
 	call disk.fs_write
-	cli
-	hlt
+	popad
+	push dword[0x7704]
+	push ecx
+	push ecx
+	push eax
+	mov al, 0
+	mov edi, esi
+	mov ecx, 0xffffffff
+	repne scasb
+	pop eax
+	xchg ecx, dword[esp]
+	mov dword[edi-1], "/.."
+	push esi
+	call disk.mfind_file
+	mov eax, ebx
+	mov edx, 0x26000
+	pop esi
+	pop ecx
+	not ecx
+	dec ecx
+	mov byte[esi+ecx], 0
+	pop ecx
+	pushad
+	push eax
+	call disk.mfind_file
+	pop eax
+	cmp eax, dword[0x7df6]
+	jne disk.create_noroot
+	mov eax, dword[0x7704]
+	add dword[0x7dfa], eax
+	add dword[0x7dfa], 14
+	mov ecx, 1
+	mov eax, 0
+	mov esi, 0x7c00
+	call disk.fs_write
+disk.create_noroot:
+	mov eax, dword[0x7704]
+	add dword[ebp+4], eax
+	add dword[ebp+4], 14
+	popad
+	dec ecx
+	shr ecx, 9
+	inc ecx
+	mov esi, edx
+	call disk.fs_write
+	ret
+disk.no_folder:
+	add esp, 36
+	ret
 disk.get_file:
 	; edx=end
 	; esi=str
@@ -2509,6 +2561,11 @@ disk.boot_start:
 	db 0x80
 	dw 0x03
 	db 0x01, 0x01, 0x01, "."
+	dd 0x00000012
+	dd disk.boot_end-disk.boot_start
+	db 0x80
+	dw 0x04
+	db 0x01, 0x01, 0x02, ".."
 	dd 0x00000015
 	dd window.font_end-window.font
 	db 0x00

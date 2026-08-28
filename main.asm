@@ -169,10 +169,6 @@ kernel.main:
 kernel.run:
 	call scheduler.run
 	jmp kernel.run
-kernel.init_dname:
-	db ".", 0, 0, 0, 0
-kernel.init_fname:
-	db "sample", 0
 kernel.init:
 	; memory init
 	mov cx, word[0x7308]
@@ -319,10 +315,6 @@ kernel.init:
 	mov word[0x560], 0xffff
 	mov ax, 0x28
 	ltr ax
-	; debug stuff
-	mov esi, kernel.init_dname
-	mov ebp, kernel.init_fname
-	call disk.create_file
 	; video init
 	mov edi, 0xf0000000
 	mov ecx, 1280*1024
@@ -560,6 +552,10 @@ kernel.exc_prog_dir:
 kernel.exc_progn2:
 	db " has stopped working"
 kernel.exc_progn2_end:
+kernel.user_convert_hex:
+	mov eax, ebx
+	call kernel.hex_loop
+	iretd
 kernel.convert_hex:
 	mov ecx, 8
 kernel.hex_loop:
@@ -601,6 +597,8 @@ kernel.service:
 	je scheduler.user_create
 	cmp ah, 0x44
 	je disk.user_file_find
+	cmp ah, 0x80
+	je kernel.user_convert_hex
 	cmp ah, 0xfb
 	je module.keybd_check
 	cmp ah, 0xfc
@@ -612,9 +610,6 @@ kernel.service:
 	cmp ah, 0xff
 	je window.user_register
 	iretd
-debug:
-	cli
-	hlt
 scheduler.run:
 	sti
 	mov esi, 0x2002c
@@ -681,14 +676,16 @@ scheduler.yield:
 	mov edi, dword[0x7320]
 	cmp word[edi+0x2e], 0
 	je scheduler.no_button_prog
-	sub dword[edi+0x24], 4
-	mov eax, dword[edi+0x24]
-	mov ebx, dword[edi+0x20]
-	mov dword[eax], ebx
-	movzx eax, word[edi+0x2e]
-	add eax, 0x10002000
-	mov dword[edi+0x20], eax
-	mov word[edi+0x2e], 0
+	test byte[0x7404], 7
+	jnz scheduler.button_prog
+	push edi
+	mov edi, 0x24000
+	xor eax, eax
+	repne scasd
+	mov eax, dword[edi-8]
+	pop edi
+	cmp eax, dword[0x7320]
+	je scheduler.button_prog
 scheduler.no_button_prog:
 	popad
 	mov esi, dword[0x7320]
@@ -713,6 +710,16 @@ scheduler.yield_return:
 	out 0x20, al
 	pop eax
 	iretd
+scheduler.button_prog:
+	sub dword[edi+0x24], 4
+	mov eax, dword[edi+0x24]
+	mov ebx, dword[edi+0x20]
+	mov dword[eax], ebx
+	movzx eax, word[edi+0x2e]
+	add eax, 0x10002000
+	mov dword[edi+0x20], eax
+	mov word[edi+0x2e], 0
+	jmp scheduler.no_button_prog
 scheduler.pkill:
 	; kills AL
 	dec byte[0x730a]
@@ -1514,7 +1521,7 @@ ps2.after_walkrel:
 	jnc ps2.no_end_task
 	mov al, 0x0c
 	bt [0x7408], eax
-	jnc ps2.maybe_tiny
+	jnc ps2.shortcut
 	cmp byte[0x7405], 0
 	je ps2.no_end_task
 	mov al, byte[0x7405]
@@ -1528,11 +1535,23 @@ ps2.no_end_task:
 	out 0x20, al
 	popad
 	iretd
-ps2.maybe_tiny:
+ps2.shortcut:
 	mov al, 0x2c
 	bt [0x7408], eax
-	jnc ps2.no_end_task
+	jc ps2.tiny
+	mov al, 0x23
+	bt [0x7408], eax
+	jc ps2.debug
+	jmp ps2.no_end_task
+ps2.tiny:
 	mov esi, ps2.tiny_str
+	mov edx, 0x26000
+	call disk.get_file
+	mov edx, 0x26000
+	call scheduler.create
+	jmp ps2.no_end_task
+ps2.debug:
+	mov esi, ps2.debug_str
 	mov edx, 0x26000
 	call disk.get_file
 	mov edx, 0x26000
@@ -1540,6 +1559,8 @@ ps2.maybe_tiny:
 	jmp ps2.no_end_task
 ps2.tiny_str:
 	db "tiny.exe", 0
+ps2.debug_str:
+	db "debug.exe", 0
 ps2.anormal_key:
 	mov bl, 0x80
 	call ps2.keybd_wforin
@@ -2550,7 +2571,7 @@ window.print_finish:
 	ret
 times 0xf * 512 - ($ - $$) db 0
 disk.clean:
-	dd 0x0000001c
+	dd 0x0000001d
 	dd 0x00000003
 disk.clean_end:
 times 0x10 * 512 - ($ - $$) db 0
@@ -2606,6 +2627,11 @@ disk.boot_start:
 	db 0x00
 	dw 0x0a
 	db 0x01, 0x01, 0x08, "tiny.exe"
+	dd 0x0000001c
+	dd module.debug_end-module.debug
+	db 0x00
+	dw 0x0b
+	db 0x01, 0x01, 0x09, "debug.exe"
 disk.boot_end:
 times 0x1 * 512 - ($ - $$) db 0
 kernel.winver:
@@ -3490,4 +3516,51 @@ module.tiny_cmd_run:
 	int 0x30
 module.tiny_cmd_end:
 times 0x3 * 512 - ($ - $$) db 0
-times 0x6 * 512 - ($ - $$) db 0
+module.debug:
+	dw 1000000000000000b
+	db 15, 15, 35, 75
+	dw module.debug_data-module.debug_title
+	dw module.debug_title-module.debug
+	dw module.debug_end-module.debug_code
+	dw module.debug_code-module.debug
+	dw module.debug_code-module.debug_data
+	dw module.debug_data-module.debug
+	dw 0, 0, 0
+module.debug_title:
+	db "Debug Tool"
+module.debug_data:
+	db "EAX=", 0
+module.debug_code:
+	pop esi
+	pop ebp
+	mov ah, 0xff
+	mov si, module.debug_int-module.debug_code
+	int 0x30
+module.dloop:
+	mov ah, 0xfc
+	int 0x30
+	jmp module.dloop
+module.debug_int:
+	mov ah, 0xfb
+	int 0x30
+	mov esi, ebp
+	mov dx, 0x0101
+	mov ah, 0x00
+	int 0x30
+	push esi
+	mov ecx, 8
+	mov edi, esi
+	mov ebx, 0xDEADBEEF
+	mov ah, 0x80
+	int 0x30
+	pop esi
+	mov dx, 0x0101
+	mov ah, 0x00
+	int 0x30
+	mov ah, 0xff
+	mov si, module.debug_int-module.debug_code
+	int 0x30
+	ret
+module.debug_end:
+times 0x4 * 512 - ($ - $$) db 0
+times 0x7 * 512 - ($ - $$) db 0

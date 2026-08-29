@@ -320,6 +320,11 @@ kernel.init:
 	mov ecx, 1280*1024
 	mov eax, 0x008080
 	rep stosd
+	; debug tool:
+	mov eax, 0x502
+	mov dr0, eax
+	mov eax, 0x10001
+	mov dr7, eax
 	ret
 kernel.init_err:
 	mov edi, 0xf0000000
@@ -565,15 +570,14 @@ kernel.hex_loop:
 	cmp al, 10
 	jae kernel.hex_letter
 	add al, '0'
-	mov byte[edi], al
+	stosb
 kernel.after_hlcx:
-	inc edi
 	pop eax
 	loop kernel.hex_loop
 	ret
 kernel.hex_letter:
 	add al, 'A' - 10
-	mov byte[edi], al
+	stosb
 	jmp kernel.after_hlcx
 kernel.service:
 	cli
@@ -678,14 +682,6 @@ scheduler.yield:
 	je scheduler.no_button_prog
 	test byte[0x7404], 7
 	jnz scheduler.button_prog
-	push edi
-	mov edi, 0x24000
-	xor eax, eax
-	repne scasd
-	mov eax, dword[edi-8]
-	pop edi
-	cmp eax, dword[0x7320]
-	je scheduler.button_prog
 scheduler.no_button_prog:
 	popad
 	mov esi, dword[0x7320]
@@ -3529,7 +3525,7 @@ module.debug:
 module.debug_title:
 	db "Debug Tool"
 module.debug_data:
-	db "EAX=", 0
+	db "EAX=", 0, "00000000", 0
 module.debug_code:
 	pop esi
 	pop ebp
@@ -3543,10 +3539,14 @@ module.dloop:
 module.debug_int:
 	mov ah, 0xfb
 	int 0x30
+	cmp bh, 'r'
+	jne module.wait_for_key
 	mov esi, ebp
+	push ebp
 	mov dx, 0x0101
 	mov ah, 0x00
 	int 0x30
+	pop ebp
 	push esi
 	mov ecx, 8
 	mov edi, esi
@@ -3554,8 +3554,13 @@ module.debug_int:
 	mov ah, 0x80
 	int 0x30
 	pop esi
-	mov dx, 0x0101
+	push ebp
+	mov dx, 0x0501
 	mov ah, 0x00
+	int 0x30
+	pop ebp
+module.wait_for_key:
+	mov ah, 0xfc
 	int 0x30
 	mov ah, 0xff
 	mov si, module.debug_int-module.debug_code

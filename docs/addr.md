@@ -55,7 +55,7 @@ Userland -> 0x10000000
 AH=0x00 CreateText		DX=POS, ESI=STR, ECX=LEN
 AH=0x01 CreateButton	DX=POS, BX=SIZE
 AH=0x02 CreateSquare	DX=POS, BX=SIZE
-AH=0x03 CreateSymbol	BL=CHAR
+AH=0x03 CreateSymbol	DX=POS, BL=CHAR
 AH=0x04 Clear
 
 AH=0x40 MemoryAlloc		ECX=AMOUNT > EDI=PTR

@@ -591,6 +591,8 @@ kernel.service:
 	je window.user_symbol
 	cmp ah, 4
 	je window.user_clear
+	cmp ah, 5
+	je window.user_blackout
 	cmp ah, 0x40
 	je memory.user_malloc
 	cmp ah, 0x41
@@ -2029,8 +2031,27 @@ window.get_data_prot:
 	mov ax, 0x23
 	mov es, ax
 	ret
+window.user_blackout:
+	call window.get_data_prot
+	mov eax, dword[edi]
+	mov dword[0x7500], eax
+	mov ax, word[edi+2]
+	sub ax, word[edi]
+	mul ah
+	movzx ebx, ax
+	add edi, 4
+	mov al, 0
+	mov ecx, 0xffffffff
+	repne scasb
+	mov ecx, ebx
+	mov al, 0x10
+	rep stosb
+	call window.update_whole_ptr
+	iretd
 window.user_clear:
 	call window.get_data_prot
+	mov eax, dword[edi]
+	mov dword[0x7500], eax
 	mov ax, word[edi+2]
 	sub ax, word[edi]
 	mul ah
@@ -2041,6 +2062,7 @@ window.user_clear:
 	repne scasb
 	mov ecx, ebx
 	rep stosb
+	call window.update_whole_ptr
 	iretd
 window.user_register:
 	; at ESI is offset from starting addr
@@ -2345,8 +2367,10 @@ window.updatetile:
 	shl edx, 5
 	add edi, edx
 	add edi, 0xf0014000
-	cmp al, ' '
+	cmp al, 0x10
 	jb window.blank
+	cmp al, ' '
+	jb window.color
 	mov ah, al
 	and al, 0x7f
 	cmp al, ' '
@@ -2424,6 +2448,31 @@ window.notext:
 window.titlebar_clral:
 	mov al, 0
 	jmp window.after_tbcrlar
+window.color:
+	and al, 0x0f
+	movzx edx, al
+	mov bl, al
+	and bl, 0x08
+	shl bl, 3
+	add bl, 0x7f
+	xor edx, edx
+	test al, 0x04
+	jz window.no_red
+	movzx edx, bl
+	shl edx, 16
+window.no_red:
+	test al, 0x02
+	jz window.no_green
+	mov dh, bl
+window.no_green:
+	test al, 0x01
+	jz window.no_blue
+	mov dl, bl
+window.no_blue:
+	mov eax, edx
+	mov ecx, 8
+	call window.nownd_loop
+	ret
 window.symbol:
 	and al, 0x7f
 	movzx esi, al
@@ -2666,6 +2715,11 @@ disk.boot_start:
 	db 0x00
 	dw 0x0b
 	db 0x01, 0x01, 0x09, "debug.exe"
+	dd 0x0000001d
+	dd module.mazes_end-module.mazes
+	db 0x00
+	dw 0x0b
+	db 0x01, 0x01, 0x09, "mazes.exe"
 disk.boot_end:
 times 0x1 * 512 - ($ - $$) db 0
 kernel.winver:
@@ -3631,4 +3685,22 @@ module.wait_for_key:
 	ret
 module.debug_end:
 times 0x4 * 512 - ($ - $$) db 0
-times 0x7 * 512 - ($ - $$) db 0
+module.mazes:
+	dw 1000000000000000b
+	db 20, 20, 65, 50
+	dw module.mazes_data-module.mazes_title
+	dw module.mazes_title-module.mazes
+	dw module.mazes_end-module.mazes_code
+	dw module.mazes_code-module.mazes
+	dw module.mazes_code-module.mazes_data
+	dw module.mazes_data-module.mazes
+	dw 0, 0, 0
+module.mazes_title:
+	db "Lasers 'n Mazes - Remake"
+module.mazes_data:
+module.mazes_code:
+	mov ah, 0x05
+	int 0x30
+	jmp $
+module.mazes_end:
+times 0x5 * 512 - ($ - $$) db 0

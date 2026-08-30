@@ -10,6 +10,34 @@ It's an experiment in building an operating system from the ground up, without r
 
 ![Latest](docs/img/latest.png)
 
+# Usage
+
+## Keybinds
+- ALT+F4	-> Close focused application
+- ALT+T		-> Open TinyCMD
+- ALT+D		-> Open Debug Application
+
+## TinyCMD Guide
+
+`/` : Goes to root folder (*not done by default*)
+
+`r` : Runs application
+
+### Example
+
+`rmazes.exe` then **ENTER** key, runs 'mazes.exe'
+
+## Debug Guide
+
+The debug application has to be the focused application. You can click on it to focus it,
+allowing the OS to send the keybinds to it.
+
+Press `r` to show information about the second focused application:
+
+Focus Queue:
+1. debug.exe
+2. test.exe (*Application to debug*)
+
 # Features
 
 ## NOTE: ELOS6.1 is STILL in development, expect more

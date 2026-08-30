@@ -591,6 +591,8 @@ kernel.service:
 	je window.user_symbol
 	cmp ah, 4
 	je window.user_clear
+	cmp ah, 5
+	je window.user_fill
 	cmp ah, 0x40
 	je memory.user_malloc
 	cmp ah, 0x41

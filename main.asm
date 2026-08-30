@@ -1,4 +1,4 @@
-; This is the source code for ELOS6.1
+; This the ELOS6.1 Source code
 ; Thank you for checking my code ;D
 ; TODO: add bugs to fix later
 section .boot vstart=0x7c00
@@ -603,6 +603,10 @@ kernel.service:
 	je disk.user_file_find
 	cmp ah, 0x80
 	je kernel.user_convert_hex
+	cmp ah, 0xf9
+	je window.get_focus_queue
+	cmp ah, 0xfa
+	je scheduler.user_get_register
 	cmp ah, 0xfb
 	je module.keybd_check
 	cmp ah, 0xfc
@@ -930,6 +934,18 @@ scheduler.cut_code:
 	rep movsb
 	popad
 	jmp scheduler.after_code
+scheduler.user_get_register:
+	mov ax, 0x10
+	mov es, ax
+	movzx edi, bl
+	shl edi, 6
+	lea edi, [edi+edx+0x1ffc0]
+	mov eax, dword[edi]
+	push eax
+	mov ax, 0x23
+	mov es, ax
+	pop eax
+	iretd
 module.keybd_check:
 	movzx eax, bl
 	mov bh, 0
@@ -1642,6 +1658,28 @@ memory.malloc_overflow:
 	pop eax
 	sub edi, eax
 	ret
+window.get_focus_queue:
+	mov ax, 0x10
+	mov es, ax
+	mov edi, 0x24000
+	xor eax, eax
+	mov ecx, 0xffffffff
+	repne scasd
+	movzx ebx, bl
+	lea ebx, [ebx*4+8]
+	sub edi, ebx
+	mov eax, dword[edi]
+	test eax, eax
+	jz window.queue_zero
+	sub eax, 0x1ffc0
+	shr eax, 6
+	movzx eax, al
+window.queue_zero:
+	push eax
+	mov ax, 0x23
+	mov es, ax
+	pop eax
+	iretd
 window.check_time:
 	mov dword[0x7500], esp
 	mov esp, 0x7b80
@@ -3514,7 +3552,7 @@ module.tiny_cmd_end:
 times 0x3 * 512 - ($ - $$) db 0
 module.debug:
 	dw 1000000000000000b
-	db 15, 15, 35, 75
+	db 15, 15, 32, 37
 	dw module.debug_data-module.debug_title
 	dw module.debug_title-module.debug
 	dw module.debug_end-module.debug_code
@@ -3525,7 +3563,9 @@ module.debug:
 module.debug_title:
 	db "Debug Tool"
 module.debug_data:
-	db "EAX=", 0, "00000000", 0
+	db "EDI=", 0, "00000000", 0, "ESI=", 0, "00000000", 0, "EBP=", 0, "00000000", 0
+	db "ESP=", 0, "00000000", 0, "EBX=", 0, "00000000", 0, "EDX=", 0, "00000000", 0
+	db "ECX=", 0, "00000000", 0, "EAX=", 0, "00000000", 0, "EIP=", 0, "00000000", 0
 module.debug_code:
 	pop esi
 	pop ebp
@@ -3542,23 +3582,46 @@ module.debug_int:
 	cmp bh, 'r'
 	jne module.wait_for_key
 	mov esi, ebp
+	mov ecx, 9
+module.debug_loop:
+	push ecx
+	push edx
 	push ebp
-	mov dx, 0x0101
+	mov dl, byte[esp+8]
+	shl dl, 1
+	mov dh, 0x01
 	mov ah, 0x00
 	int 0x30
 	pop ebp
 	push esi
 	mov ecx, 8
 	mov edi, esi
-	mov ebx, 0xDEADBEEF
+	mov edx, dword[esp+4]
+	pushad
+	push edx
+	mov bl, 1
+	mov ah, 0xf9
+	int 0x30
+	pop edx
+	mov bl, al
+	mov ah, 0xfa
+	int 0x30
+	mov dword[esp+0x10], eax
+	popad
 	mov ah, 0x80
 	int 0x30
 	pop esi
 	push ebp
-	mov dx, 0x0501
+	mov dl, byte[esp+8]
+	shl dl, 1
+	mov dh, 0x05
 	mov ah, 0x00
 	int 0x30
 	pop ebp
+	pop edx
+	pop ecx
+	add edx, 4
+	loop module.debug_loop
 module.wait_for_key:
 	mov ah, 0xfc
 	int 0x30

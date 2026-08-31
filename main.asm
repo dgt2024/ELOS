@@ -12,7 +12,7 @@ boot.main:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	mov ax, 0x0211
+	mov ax, 0x0212
 	mov bx, 0x7c00
 	mov cx, 0x0001
 	mov dh, 0
@@ -134,9 +134,9 @@ boot.idtloop:
 	lidt [0x7300]
 	ret
 times 494 - ($ - $$) db 0
-dd 0x00000011
-dd disk.clean_end-disk.clean
 dd 0x00000012
+dd disk.clean_end-disk.clean
+dd 0x00000013
 dd disk.boot_end-disk.boot_start
 dw 0xaa55
 boot.exception:
@@ -282,6 +282,14 @@ kernel.init:
 	call disk.get_file
 	cmp ah, 0x01
 	je kernel.init_err
+	mov esi, kernel.ld_wallpaper
+	mov edx, 0x24800
+	call disk.get_file
+	cmp ah, 0x01
+	jne kernel.no_def_pp
+	cli
+	hlt
+kernel.no_def_pp:
 	; drivers
 	;call module.pci_init
 	; Set Up mouse
@@ -316,10 +324,18 @@ kernel.init:
 	mov ax, 0x28
 	ltr ax
 	; video init
-	mov edi, 0xf0000000
-	mov ecx, 1280*1024
-	mov eax, 0x008080
-	rep stosd
+	xor dx, dx
+kernel.vloop:
+	push edx
+	call window.no_wnd
+	pop edx
+	inc dh
+	cmp dh, 161
+	jne kernel.vloop
+	mov dh, 0
+	inc dl
+	cmp dl, 129
+	jne kernel.vloop
 	; debug tool:
 	mov eax, 0x502
 	mov dr0, eax
@@ -337,6 +353,8 @@ kernel.ld_symbols:
 	db "symbols.bin", 0
 kernel.ld_font:
 	db "font.bin", 0
+kernel.ld_wallpaper:
+	db "wallpaper.spf", 0
 kernel.update_whole_page:
 	push eax
 	mov eax, cr3
@@ -1048,14 +1066,14 @@ module.pci_net:
 	call kernel.hex_loop
 	push ebx
 	mov esi, module.pci_devfile
-	mov edx, 0x25000
+	mov edx, 0x27000
 	call disk.get_file
 	pop ebx
 	pop ecx
 	cmp ah, 0x01
 	je module.pci_poll
 	pushad
-	call 0x25000
+	call 0x27000
 	popad
 	mov dword[0x7380], ecx
 	mov dword[0x7384], ebx
@@ -1105,7 +1123,7 @@ disk.create_file:
 	cli
 	mov eax, dword[0x7df6]
 	mov ecx, dword[0x7dfa]
-	mov edx, 0x26000
+	mov edx, 0x28000
 	pushad
 	push ebp
 	call disk.mfind_file
@@ -1113,7 +1131,7 @@ disk.create_file:
 	pop ebp
 	je disk.no_folder
 	push ecx
-	lea edi, [0x26000+ecx]
+	lea edi, [0x28000+ecx]
 	push edi
 	mov edi, ebp
 	mov ecx, 0xffffffff
@@ -1139,7 +1157,7 @@ disk.create_file:
 	dec ecx
 	shr ecx, 9
 	inc ecx
-	mov esi, 0x26000
+	mov esi, 0x28000
 	call disk.fs_write
 	popad
 	push dword[0x7704]
@@ -1156,7 +1174,7 @@ disk.create_file:
 	push esi
 	call disk.mfind_file
 	mov eax, ebx
-	mov edx, 0x26000
+	mov edx, 0x28000
 	pop esi
 	pop ecx
 	not ecx
@@ -1247,11 +1265,11 @@ disk.search_file:
 	dec ecx
 	shr ecx, 9
 	inc ecx
-	mov edi, 0x26000
+	mov edi, 0x28000
 	call disk.fs_read
 	cmp ah, 0x01
 	je disk.fs_err
-	mov ebp, 0x26000
+	mov ebp, 0x28000
 	push ebp
 disk.check_dir:
 	cmp byte[0x7700], 0x00
@@ -1265,6 +1283,7 @@ disk.check_prop:
 	cmp byte[ebp], 0x01
 	jne disk.next_prop
 	mov dl, byte[esp+8]
+	inc dl
 	cmp byte[ebp+1], dl
 	jne disk.next_dir
 	push esi
@@ -1308,7 +1327,7 @@ disk.next_dir:
 	lea ebp, [ebp+edx+12]
 	push ebp
 	mov edx, dword[esp+4]
-	add edx, 0x26000
+	add edx, 0x28000
 	cmp ebp, edx
 	jb disk.check_dir
 	add esp, 20
@@ -1363,8 +1382,6 @@ disk.fs_read:
 	mov dx, 0x1f0
 	rep insw
 	pop ecx
-	sub edi, 4
-	mov eax, dword[edi]
 	dec ecx
 	test ecx, ecx
 	jnz disk.fs_read
@@ -1559,16 +1576,16 @@ ps2.shortcut:
 	jmp ps2.no_end_task
 ps2.tiny:
 	mov esi, ps2.tiny_str
-	mov edx, 0x26000
+	mov edx, 0x28000
 	call disk.get_file
-	mov edx, 0x26000
+	mov edx, 0x28000
 	call scheduler.create
 	jmp ps2.no_end_task
 ps2.debug:
 	mov esi, ps2.debug_str
-	mov edx, 0x26000
+	mov edx, 0x28000
 	call disk.get_file
-	mov edx, 0x26000
+	mov edx, 0x28000
 	call scheduler.create
 	jmp ps2.no_end_task
 ps2.tiny_str:
@@ -1775,12 +1792,12 @@ window.window_moves:
 	cmp dh, 32
 	ja window.after_winver
 	pushad
-	mov edx, 0x26000
+	mov edx, 0x28000
 	mov esi, window.winver_dir
 	call disk.get_file
 	cmp ah, 0x01
 	je kernel.init_err
-	mov edx, 0x26000
+	mov edx, 0x28000
 	xor ebp, ebp
 	call scheduler.create
 	popad
@@ -1789,12 +1806,12 @@ window.after_winver:
 	cmp dh, 42
 	ja window.after_iwm
 	pushad
-	mov edx, 0x26000
+	mov edx, 0x28000
 	mov esi, window.explorer_dir
 	call disk.get_file
 	cmp ah, 0x01
 	je kernel.init_err
-	mov edx, 0x26000
+	mov edx, 0x28000
 	xor ebp, ebp
 	call scheduler.create
 	popad
@@ -1911,7 +1928,7 @@ window.after_null:
 	add eax, 0xf0000000
 	mov edi, eax
 	mov ecx, 8
-	mov eax, 0xff00ff
+	mov eax, 0xffffff
 window.mouse_loop:
 	mov edx, ecx
 	mov ecx, 8
@@ -2032,7 +2049,10 @@ window.get_data_prot:
 	mov es, ax
 	ret
 window.user_clear:
+	xor ecx, ecx
+window.user_fill:
 	push ebx
+	push ecx
 	call window.get_data_prot
 	mov eax, dword[edi]
 	mov dword[0x7500], eax
@@ -2044,7 +2064,11 @@ window.user_clear:
 	mov al, 0
 	mov ecx, 0xffffffff
 	repne scasb
+	pop ecx
+	test ecx, ecx
+	jnz window.no_setup
 	mov ecx, ebx
+window.no_setup:
 	pop eax
 	rep stosb
 	call window.update_whole_ptr
@@ -2443,7 +2467,7 @@ window.color:
 	movzx edx, al
 	mov bl, al
 	and bl, 0x08
-	shl bl, 3
+	shl bl, 4
 	add bl, 0x7f
 	xor edx, edx
 	test al, 0x04
@@ -2487,7 +2511,40 @@ window.no_wnd:
 	add dl, 2
 	cmp dl, 2
 	jb window.taskbar
-	mov eax, 0x008080
+	push edx
+	movzx eax, dl
+	imul eax, 160
+	movzx edx, dh
+	lea eax, [eax+edx+0x24800]
+	mov dl, byte[eax]
+	mov al, dl
+	shr al, 6
+	inc al
+	push eax
+	push edx
+	shr dl, 4
+	and dl, 0x03
+	mul dl
+	shl al, 4
+	movzx ebx, al
+	shl ebx, 16
+	mov edx, dword[esp]
+	mov eax, dword[esp+4]
+	shr dl, 2
+	and dl, 0x03
+	mul dl
+	shl al, 4
+	mov bh, al
+	mov edx, dword[esp]
+	mov eax, dword[esp+4]
+	and dl, 0x03
+	mul dl
+	shl al, 4
+	mov bl, al
+	pop edx
+	pop eax
+	pop edx
+	mov eax, ebx
 window.after_taskbar:
 	movzx edi, dl
 	imul edi, 1280*8*4
@@ -2642,74 +2699,72 @@ window.print_skip:
 window.print_finish:
 	pop ecx
 	ret
-times 0xf * 512 - ($ - $$) db 0
-disk.clean:
-	dd 0x0000001d
-	dd 0x00000003
-disk.clean_end:
 times 0x10 * 512 - ($ - $$) db 0
+disk.clean:
+disk.clean_end:
+times 0x11 * 512 - ($ - $$) db 0
 section .filesystem vstart=0x0
 disk.boot_start:
-	dd 0x00000012
-	dd disk.boot_end-disk.boot_start
-	db 0x80
-	dw 0x03
-	db 0x01, 0x01, 0x01, "."
-	dd 0x00000012
+	dd 0x00000013
 	dd disk.boot_end-disk.boot_start
 	db 0x80
 	dw 0x04
-	db 0x01, 0x01, 0x02, ".."
-	dd 0x00000015
+	db 0x01, 0x01, 0x02, ".", 0
+	dd 0x00000013
+	dd disk.boot_end-disk.boot_start
+	db 0x80
+	dw 0x05
+	db 0x01, 0x01, 0x03, "..", 0
+	dd 0x00000016
 	dd window.font_end-window.font
 	db 0x00
-	dw 0x0a
-	db 0x01, 0x01, 0x08, "font.bin"
-	dd 0x00000017
+	dw 0x0b
+	db 0x01, 0x01, 0x09, "font.bin", 0
+	dd 0x00000018
 	dd window.symbols_font_end-window.symbols_font
 	db 0x00
-	dw 0x0d
-	db 0x01, 0x01, 0x0b, "symbols.bin"
-	dd 0x00000013
+	dw 0x0e
+	db 0x01, 0x01, 0x0c, "symbols.bin", 0
+	dd 0x00000014
 	dd kernel.winver_end-kernel.winver
 	db 0x00
-	dw 0x0c
-	db 0x01, 0x01, 0x0a, "winver.exe"
-	dd 0x00000014
+	dw 0x0d
+	db 0x01, 0x01, 0x0b, "winver.exe", 0
+	dd 0x00000015
 	dd kernel.exc_progn1_end-kernel.exc_progn1
 	db 0x00
-	dw 0x0b
-	db 0x01, 0x01, 0x09, "crash.exe"
-	dd 0x00000018
+	dw 0x0c
+	db 0x01, 0x01, 0x0a, "crash.exe", 0
+	dd 0x00000019
 	dd window.explorer_end-window.explorer
 	db 0x00
-	dw 0x0e
-	db 0x01, 0x01, 0x0c, "explorer.exe"
+	dw 0x0f
+	db 0x01, 0x01, 0x0d, "explorer.exe", 0
 	dd 0x0000001a
 	dd module.notepad_end-module.notepad
 	db 0x00
-	dw 0x0d
-	db 0x01, 0x01, 0x0b, "notepad.exe"
-	dd 0x00000019
-	dd module.rtl8139_end-module.rtl8139_start
-	db 0x00
-	dw 0x0f
-	db 0x01, 0x01, 0x0d, "10EC:8139.dev"
+	dw 0x0e
+	db 0x01, 0x01, 0x0c, "notepad.exe", 0
 	dd 0x0000001b
 	dd module.tiny_cmd_end-module.tiny_cmd
 	db 0x00
-	dw 0x0a
-	db 0x01, 0x01, 0x08, "tiny.exe"
+	dw 0x0b
+	db 0x01, 0x01, 0x09, "tiny.exe", 0
 	dd 0x0000001c
 	dd module.debug_end-module.debug
 	db 0x00
-	dw 0x0b
-	db 0x01, 0x01, 0x09, "debug.exe"
+	dw 0x0c
+	db 0x01, 0x01, 0x0a, "debug.exe", 0
 	dd 0x0000001d
 	dd module.mazes_end-module.mazes
 	db 0x00
-	dw 0x0b
-	db 0x01, 0x01, 0x09, "mazes.exe"
+	dw 0x0c
+	db 0x01, 0x01, 0x0a, "mazes.exe", 0
+	dd 0x0000001e
+	dd 0x28000
+	db 0x00
+	dw 0x10
+	db 0x01, 0x01, 0x0e, "wallpaper.spf", 0
 disk.boot_end:
 times 0x1 * 512 - ($ - $$) db 0
 kernel.winver:
@@ -2728,7 +2783,7 @@ kernel.winver_data:
 	db "ELOS6.1", 0
 	db "Enhanced Lightweight OS", 0
 	db "Version: 6.1", 0
-	db "Build: 2026.08.25", 0
+	db "Build: 2026.08.30", 0
 	db "Architecture: IA-32", 0
 	db "Copyright 2025-2026 @dgt2024", 0
 	db "OK", 0
@@ -2964,13 +3019,14 @@ window.font:
 	dd 010000111000000000000000000000b ; [
 	dd 100000100001000001000010000010b
 	dd 000100000100000000000000000000b ; \
+	
 	dd 011100001000010000100001000010b
 	dd 000100111000000000000000000000b ; ]
 	dd 001000101010001000000000000000b
 	dd 000000000000000000000000000000b ; ^
 	dd 000000000000000000000000000000b
-	dd 0x00000016
-times 0x4 * 512 - ($ - $$) db 0
+	;dd 0x00000016
+;times 0x4 * 512 - ($ - $$) db 0
 	dd 000001111100000000000000000000b ; _
 	dd 010000010000010000000000000000b
 	dd 000000000000000000000000000000b ; `
@@ -3025,7 +3081,7 @@ times 0x4 * 512 - ($ - $$) db 0
 	dd 000000000000000100011000101010b
 	dd 001000010000100101000100000000b ; y
 	dd 000000000000000111110001000100b
-	dd 000100000100001000011000101110b ; z
+	dd 010001111100000000000000000000b ; z
 	dd 001100100101000110000100001000b
 	dd 010010011000000000000000000000b ; {
 	dd 001000010000100001000010000100b
@@ -3343,81 +3399,6 @@ window.explorer_unclick:
 	ret
 window.explorer_end:
 times 0x7 * 512 - ($ - $$) db 0
-section .rtl8139 vstart=0x25000
-module.rtl8139_start:
-	ret
-	mov eax, ebx
-	mov al, 0x04
-	call module.rtl8139_init_get
-	or al, 0x04
-	out dx, eax
-	mov eax, ebx
-	mov al, 0x10
-	call module.rtl8139_init_get
-	mov dx, ax
-	mov dl, 0x52
-	mov al, 0
-	out dx, al
-	mov dl, 0x37
-	mov al, 0x10
-	out dx, al
-module.rtl8139_init_reset:
-	in al, dx
-	test al, 0x10
-	jnz module.rtl8139_init_reset
-	mov dl, 0x30
-	mov eax, 0x25200
-	out dx, eax
-	mov dl, 0x3c
-	mov ax, 0x0005
-	out dx, ax
-	mov dl, 0x44
-	mov eax, 0x8f
-	out dx, eax
-	mov dl, 0x37
-	mov al, 0x0c
-	out dx, al
-	mov eax, ebx
-	mov al, 0x3c
-	push edx
-	call module.rtl8139_init_get
-	pop edx
-	movzx edi, al
-	lea edi, [0x1100+edi*8]
-	mov word[edi+6], 0x0002
-	mov word[edi], module.rtl8139_interrupt
-	mov dl, 0
-	mov ecx, 6
-	mov edi, module.rtl8139_mac
-module.rtl8139_mac_get:
-	insb
-	inc dl
-	loop module.rtl8139_mac_get
-	ret
-module.rtl8139_mac:
-	db 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-module.rtl8139_init_get:
-	mov dx, 0xcf8
-	out dx, eax
-	mov dx, 0xcfc
-	in eax, dx
-	ret
-module.rtl8139_interrupt:
-	pushad
-	mov dx, word[0x7384]
-	mov dl, 0x3e
-	in ax, dx
-	test ax, 0x01
-	jnz module.rtl8139_recv
-	mov ax, 0x05
-	out dx, ax
-	popad
-	iretd
-module.rtl8139_recv:
-	cli
-	hlt
-module.rtl8139_end:
-times 0x1 * 512 - ($ - $$) db 0
 module.notepad:
 	dw 1000000000000000b
 	db 8, 8, 58, 68
@@ -3465,7 +3446,7 @@ module.notepad_erase:
 	mov byte[edi], 0x20
 	jmp module.notepad_aftererase
 module.notepad_end:
-times 0x2 * 512 - ($ - $$) db 0
+times 0x8 * 512 - ($ - $$) db 0
 module.tiny_cmd:
 	dw 1000000000000000b
 	db 12, 12, 52, 22
@@ -3594,7 +3575,7 @@ module.tiny_cmd_run:
 	mov ah, 0xfd
 	int 0x30
 module.tiny_cmd_end:
-times 0x3 * 512 - ($ - $$) db 0
+times 0x9 * 512 - ($ - $$) db 0
 module.debug:
 	dw 1000000000000000b
 	db 15, 15, 32, 37
@@ -3675,10 +3656,10 @@ module.wait_for_key:
 	int 0x30
 	ret
 module.debug_end:
-times 0x4 * 512 - ($ - $$) db 0
+times 0xa * 512 - ($ - $$) db 0
 module.mazes:
 	dw 1000000000000000b
-	db 20, 20, 65, 50
+	db 20, 20, 65, 55
 	dw module.mazes_data-module.mazes_title
 	dw module.mazes_title-module.mazes
 	dw module.mazes_end-module.mazes_code
@@ -3694,27 +3675,60 @@ module.mazes_data:
 	db 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1c, 0x1f, 0x1c, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1c, 0x1f, 0
 	db 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1f, 0
 	db 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1f, 0x1f, 0
+	db "Press any key to Start", 0
 module.mazes_code:
 	pop esi
 	mov ah, 0x04
+	mov bl, 0x19
+	int 0x30
+	mov ecx, 45*7
+	mov ah, 0x05
 	mov bl, 0x1c
 	int 0x30
 	mov esi, dword[esp]
+	mov ecx, 5
 	mov dx, 0x0101
+module.mazes_start:
+	push ecx
+	push edx
 	mov ah, 0x00
 	int 0x30
-	mov dx, 0x0102
+	pop edx
+	pop ecx
+	inc dl
+	loop module.mazes_start
+	mov dx, 0x0208
 	mov ah, 0x00
 	int 0x30
-	mov dx, 0x0103
-	mov ah, 0x00
+module.mazes_poll:
+	mov ah, 0xfc
 	int 0x30
-	mov dx, 0x0104
-	mov ah, 0x00
+	mov ah, 0xfb
 	int 0x30
-	mov dx, 0x0105
-	mov ah, 0x00
-	int 0x30
+	cmp bl, 0
+	je module.mazes_poll
+	call module.mazes_game
 	jmp $
+module.mazes_game:
+	mov ah, 0x04
+	mov bl, 0x1b
+	int 0x30
+	mov dx, 0x0101
+module.mazes_fill:
+	push edx
+	mov bl, 0x10
+	mov ah, 0x03
+	int 0x30
+	pop edx
+	add dh, 2
+	cmp dh, 22*2
+	jb module.mazes_fill
+	mov dh, 1
+	add dl, 2
+	cmp dl, 17*2
+	jb module.mazes_fill
+	ret
 module.mazes_end:
-times 0x5 * 512 - ($ - $$) db 0
+times 0xb * 512 - ($ - $$) db 0
+	incbin "wallpaper.spf"
+times (0xb + 40) * 512 - ($ - $$) db 0

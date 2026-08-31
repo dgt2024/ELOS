@@ -46,17 +46,20 @@ Userland -> 0x10000000
 0x20000-0x24000 -> PCB array
 0x24000-0x24400 -> Window Array
 0x24400-0x24800 -> Textures
-0x24800-0x27000 -> IPC (todo)
+0x24800-0x25000 -> IPC
 0x25000-0x25200+ -> NET init
 0x25200-0x26000 -> NET scrap memory
 0x26000-0x27000 -> Disk Scrap memory
+0x9a000-0x9f000 -> Wallpaper
 
 # ABI
 AH=0x00 CreateText		DX=POS, ESI=STR, ECX=LEN
 AH=0x01 CreateButton	DX=POS, BX=SIZE
 AH=0x02 CreateSquare	DX=POS, BX=SIZE
 AH=0x03 CreateSymbol	DX=POS, BL=CHAR
-AH=0x04 FillOut			BL=CHAR
+AH=0x04 Clear			BL=CHAR
+AH=0x05 ClearPctg		ECX=AMOUNT BL=CHAR
+AH=0x06 CustomSquare	DX=POS, BX=SIZE, ECX=SYM1, EDI=SYM2
 
 AH=0x40 MemoryAlloc		ECX=AMOUNT > EDI=PTR
 AH=0x41 ReadFile		ESI=STR, EDX=PTR > ECX=SIZE, EDI=END

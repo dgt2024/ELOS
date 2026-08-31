@@ -5,6 +5,7 @@ section .boot vstart=0x7c00
 use16
 boot.main:
 	cli
+	cld
 	xor ax, ax
 	mov ds, ax
 	mov es, ax
@@ -106,7 +107,7 @@ boot.after_vesa:
 	call boot.pagingloop
 	mov eax, 0x1001b
 	mov di, 0x3040
-	mov cx, 0x20
+	mov cx, 0x80
 	call boot.pagingloop
 	mov eax, 0x2000
 	mov cr3, eax
@@ -283,7 +284,7 @@ kernel.init:
 	cmp ah, 0x01
 	je kernel.init_err
 	mov esi, kernel.ld_wallpaper
-	mov edx, 0x24800
+	mov edx, 0x8a000
 	call disk.get_file
 	cmp ah, 0x01
 	jne kernel.no_def_pp
@@ -599,6 +600,7 @@ kernel.hex_letter:
 	jmp kernel.after_hlcx
 kernel.service:
 	cli
+	cld
 	cmp ah, 0
 	je window.user_print
 	cmp ah, 1
@@ -611,6 +613,8 @@ kernel.service:
 	je window.user_clear
 	cmp ah, 5
 	je window.user_fill
+	cmp ah, 6
+	je window.user_custom_sq
 	cmp ah, 0x40
 	je memory.user_malloc
 	cmp ah, 0x41
@@ -718,12 +722,7 @@ scheduler.no_button_prog:
 	jmp scheduler.find_prog
 scheduler.yield_directly:
 	mov esp, 0x7bfc
-	mov esi, dword[0x7320]
-	add esi, 0x6c
-	mov al, byte[0x730a]
-	cmp byte[0x7324], al
-	jae scheduler.run_end
-	jmp scheduler.find_prog
+	jmp scheduler.run_end
 scheduler.yield_return:
 	push eax
 	mov al, 0x20
@@ -1123,7 +1122,7 @@ disk.create_file:
 	cli
 	mov eax, dword[0x7df6]
 	mov ecx, dword[0x7dfa]
-	mov edx, 0x28000
+	mov edx, 0x26000
 	pushad
 	push ebp
 	call disk.mfind_file
@@ -1131,7 +1130,7 @@ disk.create_file:
 	pop ebp
 	je disk.no_folder
 	push ecx
-	lea edi, [0x28000+ecx]
+	lea edi, [0x26000+ecx]
 	push edi
 	mov edi, ebp
 	mov ecx, 0xffffffff
@@ -1157,7 +1156,7 @@ disk.create_file:
 	dec ecx
 	shr ecx, 9
 	inc ecx
-	mov esi, 0x28000
+	mov esi, 0x26000
 	call disk.fs_write
 	popad
 	push dword[0x7704]
@@ -1174,7 +1173,7 @@ disk.create_file:
 	push esi
 	call disk.mfind_file
 	mov eax, ebx
-	mov edx, 0x28000
+	mov edx, 0x26000
 	pop esi
 	pop ecx
 	not ecx
@@ -1212,6 +1211,7 @@ disk.get_file:
 	; edx=end
 	; esi=str
 	cli
+	cld
 	mov eax, dword[0x7df6]
 	mov ecx, dword[0x7dfa]
 	; eax=pwd
@@ -1278,6 +1278,8 @@ disk.check_dir:
 	jz disk.next_dir
 disk.after_cfnd:
 	movzx ecx, byte[ebp+11]
+	test ecx, ecx
+	jz disk.no_prop ; no properties = failed (there must be name/RFU)
 	add ebp, 12
 disk.check_prop:
 	cmp byte[ebp], 0x01
@@ -1318,6 +1320,7 @@ disk.next_prop:
 	add ebp, edx
 	add ebp, 2
 	loop disk.check_prop
+disk.no_prop:
 	add esp, 20
 	mov ah, 0x01
 	ret
@@ -1450,6 +1453,7 @@ ps2.poll_end:
 	ret
 ps2.mouse:
 	cli
+	cld
 	pushad
 	push es
 	push ds
@@ -1522,6 +1526,7 @@ ps2.keybd_poll_end:
 	ret
 ps2.keyboard:
 	cli
+	cld
 	pushad
 	call ps2.keybd_wforin
 	in al, 0x60
@@ -1792,12 +1797,12 @@ window.window_moves:
 	cmp dh, 32
 	ja window.after_winver
 	pushad
-	mov edx, 0x28000
+	mov edx, 0x26000
 	mov esi, window.winver_dir
 	call disk.get_file
 	cmp ah, 0x01
 	je kernel.init_err
-	mov edx, 0x28000
+	mov edx, 0x26000
 	xor ebp, ebp
 	call scheduler.create
 	popad
@@ -1806,12 +1811,12 @@ window.after_winver:
 	cmp dh, 42
 	ja window.after_iwm
 	pushad
-	mov edx, 0x28000
+	mov edx, 0x26000
 	mov esi, window.explorer_dir
 	call disk.get_file
 	cmp ah, 0x01
 	je kernel.init_err
-	mov edx, 0x28000
+	mov edx, 0x26000
 	xor ebp, ebp
 	call scheduler.create
 	popad
@@ -2081,6 +2086,11 @@ window.user_register:
 window.user_wow:
 	add esp, 4
 	iretd
+window.user_custom_sq:
+	mov dword[0x7500], ecx
+	mov dword[0x7504], edi
+	call window.user_square
+	iretd
 window.user_simple:
 	mov dword[0x7500], 0x8b8a8988
 	mov dword[0x7504], 0x8d898c8b
@@ -2132,12 +2142,9 @@ window.no_top_layer:
 	inc edi
 	mov al, byte[0x7502]
 	call window.single
-	pop edi
-	pop ecx
-	pop edx
-	push edx
-	push ecx
-	push edi
+	mov edi, dword[esp]
+	mov ecx, dword[esp+4]
+	mov edx, dword[esp+8]
 	push ebx
 	inc ch
 	movzx ebp, bh
@@ -2515,7 +2522,7 @@ window.no_wnd:
 	movzx eax, dl
 	imul eax, 160
 	movzx edx, dh
-	lea eax, [eax+edx+0x24800]
+	lea eax, [eax+edx+0x8a000]
 	mov dl, byte[eax]
 	mov al, dl
 	shr al, 6
@@ -2761,7 +2768,7 @@ disk.boot_start:
 	dw 0x0c
 	db 0x01, 0x01, 0x0a, "mazes.exe", 0
 	dd 0x0000001e
-	dd 0x28000
+	dd 0x5000
 	db 0x00
 	dw 0x10
 	db 0x01, 0x01, 0x0e, "wallpaper.spf", 0
@@ -3727,6 +3734,13 @@ module.mazes_fill:
 	add dl, 2
 	cmp dl, 17*2
 	jb module.mazes_fill
+	mov ecx, 0x10101010
+	mov edi, ecx
+	mov dx, 0x0101
+	mov bx, 0x291f
+	mov ah, 0x06
+	jmp $
+	int 0x30
 	ret
 module.mazes_end:
 times 0xb * 512 - ($ - $$) db 0

@@ -146,3 +146,13 @@ way...
 And I added a notepad (shortly after I fixed a bug) and then
 I added keybind access, so like Shift+x making an uppercase
 X and Shift+1 making an exclamation mark...
+
+![Background](docs/img/background.png)
+![Mouse](docs/img/redef_mouse.png)
+
+Then I also changed the mouse texture from a triangle to a larger,
+good-looking mouse-shaped blob. And I also added a wallpaper image
+system (saved in /wallpaper.spf).
+
+In the end, I fixed one of the largest bugs I ever had (probably
+around 80% of all the BSODs I got).

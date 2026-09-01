@@ -1479,7 +1479,7 @@ ps2.mouse:
 	in al, 0x60
 	movsx ax, al
 	add word[0x7400], ax
-	jo ps2.x_underflow
+	js ps2.x_underflow
 	cmp word[0x7400], 1280
 	ja ps2.x_overflow
 ps2.after_xflow:
@@ -1488,7 +1488,7 @@ ps2.after_xflow:
 	movsx ax, al
 	neg ax
 	add word[0x7402], ax
-	jo ps2.y_underflow
+	js ps2.y_underflow
 	cmp word[0x7402], 1024
 	ja ps2.y_overflow
 ps2.after_yflow:
@@ -1502,10 +1502,10 @@ ps2.skip:
 	popad
 	iretd
 ps2.y_overflow:
-	mov word[0x7402], 1024
+	mov word[0x7402], 0
 	jmp ps2.after_yflow
 ps2.y_underflow:
-	mov word[0x7402], 0
+	mov word[0x7402], 1023
 	jmp ps2.after_yflow
 ps2.x_overflow:
 	mov word[0x7400], 0
@@ -1907,22 +1907,25 @@ window.after_null:
 	popad
 	sub dl, 2
 	push dword[0x2100]
-	pushad
-	call window.updatetile
-	popad
-	inc dh
-	pushad
-	call window.updatetile
-	popad
 	dec dh
-	inc dl
+	cmp dl, 0
+	jne window.no_dy
+	dec dl
+window.no_dy:
+	mov ecx, 4
+window.update_y:
+	push ecx
+	mov ecx, 3
+window.update_x:
 	pushad
 	call window.updatetile
 	popad
 	inc dh
-	pushad
-	call window.updatetile
-	popad
+	loop window.update_x
+	pop ecx
+	sub dh, 3
+	inc dl
+	loop window.update_y
 	pop dword[0x2100]
 	call kernel.update_whole_page
 	movzx eax, word[0x7402]
@@ -1932,26 +1935,37 @@ window.after_null:
 	add eax, ebx
 	add eax, 0xf0000000
 	mov edi, eax
+	mov ecx, 13
+	xor ebx, ebx
+window.mouse_y:
+	push ecx
 	mov ecx, 8
+window.mouse_x:
+	bt [window.mouse_texture], ebx
+	jnc window.no_mouse_px
 	mov eax, 0xffffff
-window.mouse_loop:
-	mov edx, ecx
-	mov ecx, 8
-	push edi
-	push eax
-window.mouse_subloop:
-	sub eax, 0x200020
-	jc window.mouse_slend
-	stosd
-	loop window.mouse_subloop
-window.mouse_slend:
-	pop eax
-	pop edi
-	add edi, (1280)*4
-	sub eax, 0x200020
-	mov ecx, edx
-	loop window.mouse_loop
+	mov dword[edi], eax
+window.no_mouse_px:
+	add edi, 4
+	inc ebx
+	loop window.mouse_x
+	pop ecx
+	add edi, (1280-8)*4
+	loop window.mouse_y
 	ret
+window.mouse_texture:
+	db 00000001b
+	db 00000011b
+	db 00000111b
+	db 00001111b
+	db 00011111b
+	db 00111111b
+	db 01111111b
+	db 11111111b
+	db 00111111b
+	db 00111011b
+	db 01110001b
+	db 01110000b
 window.check_focused_wnd:
 	pushad
 	xor eax, eax
@@ -3720,7 +3734,7 @@ module.mazes_game:
 	mov ah, 0x04
 	mov bl, 0x1b
 	int 0x30
-	mov dx, 0x0101
+	mov dx, 0x0303
 module.mazes_fill:
 	push edx
 	mov bl, 0x10
@@ -3728,19 +3742,19 @@ module.mazes_fill:
 	int 0x30
 	pop edx
 	add dh, 2
-	cmp dh, 22*2
+	cmp dh, 21*2
 	jb module.mazes_fill
 	mov dh, 1
 	add dl, 2
-	cmp dl, 17*2
+	cmp dl, 16*2
 	jb module.mazes_fill
 	mov ecx, 0x10101010
 	mov edi, ecx
 	mov dx, 0x0101
 	mov bx, 0x291f
 	mov ah, 0x06
-	jmp $
 	int 0x30
+	
 	ret
 module.mazes_end:
 times 0xb * 512 - ($ - $$) db 0

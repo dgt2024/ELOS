@@ -531,6 +531,7 @@ kernel.page_fault:
 kernel.page_fault_msg:
 	db "Accessing Unmapped Memory with Flags 0x", 0, "00000000 at 0x", 0, "00000000", 0
 kernel.exc_prog:
+	cld
 	push esi
 	push ecx
 	pushad
@@ -636,7 +637,7 @@ kernel.service:
 	cmp ah, 0xfc
 	je scheduler.yield
 	cmp ah, 0xfd
-	je window.user_end
+	je scheduler.user_end
 	cmp ah, 0xfe
 	je window.user_get_data
 	cmp ah, 0xff
@@ -658,6 +659,8 @@ scheduler.find_prog:
 	sub esi, 0x6c
 	mov eax, dword[esi+0x20]
 	mov dword[0x730c], eax
+	cmp eax, 0x24242424
+	je debug
 	mov dword[0x7310], 0x1b
 	mov eax, dword[esi+0x28]
 	mov dword[0x7314], eax
@@ -675,17 +678,15 @@ scheduler.find_prog:
 	popad
 	mov esp, 0x730c
 	iretd
+debug:
+	cli
+	hlt
 scheduler.run_end:
 	mov byte[0x730b], 0
 	mov byte[0x7324], 0
 	ret
-scheduler.timer:
-	cli
-	inc word[0x7325]
-	call window.check_time
-scheduler.yield:
-	cmp byte[0x730b], 0
-	je scheduler.yield_return
+scheduler.save_regs:
+	mov dword[0x7500], esp
 	push eax
 	mov ax, 0x10
 	mov es, ax
@@ -700,6 +701,16 @@ scheduler.yield:
 	mov dword[esp+0x28], eax
 	mov eax, dword[0x7aec]
 	mov dword[esp+0x20], eax
+	mov esp, dword[0x7500]
+	ret
+scheduler.timer:
+	cli
+	inc word[0x7325]
+	call window.check_time
+scheduler.yield:
+	cmp byte[0x730b], 0
+	je scheduler.yield_return
+	call scheduler.save_regs
 	mov esp, 0x7bfc
 	pushad
 	mov al, byte[0x730b]
@@ -775,9 +786,20 @@ scheduler.pkill_skip_wnd:
 	call kernel.update_whole_page
 	ret
 scheduler.user_create:
+	cli
 	xor ebp, ebp
 	call scheduler.create
-	iretd
+	call scheduler.save_regs
+	jmp scheduler.yield_directly
+scheduler.user_end:
+	cli
+	mov ax, 0x10
+	mov es, ax
+	mov ds, ax
+	mov al, byte[0x730b]
+	call scheduler.pkill
+	call scheduler.save_regs
+	jmp scheduler.yield_directly
 scheduler.create:
 	inc byte[0x730a]
 	mov esi, 0x2002c
@@ -957,6 +979,7 @@ scheduler.user_get_register:
 	mov ax, 0x10
 	mov es, ax
 	movzx edi, bl
+	movzx edx, dl
 	shl edi, 6
 	lea edi, [edi+edx+0x1ffc0]
 	mov eax, dword[edi]
@@ -1585,14 +1608,16 @@ ps2.tiny:
 	call disk.get_file
 	mov edx, 0x28000
 	call scheduler.create
-	jmp ps2.no_end_task
+	call scheduler.save_regs
+	jmp scheduler.yield_directly
 ps2.debug:
 	mov esi, ps2.debug_str
 	mov edx, 0x28000
 	call disk.get_file
 	mov edx, 0x28000
 	call scheduler.create
-	jmp ps2.no_end_task
+	call scheduler.save_regs
+	jmp scheduler.yield_directly
 ps2.tiny_str:
 	db "tiny.exe", 0
 ps2.debug_str:
@@ -2027,13 +2052,6 @@ window.uwptr_down:
 	jmp window.uwptr_loop
 window.end_uwptr:
 	ret
-window.user_end:
-	mov ax, 0x10
-	mov es, ax
-	mov ds, ax
-	mov al, byte[0x730b]
-	call scheduler.pkill
-	jmp scheduler.yield_directly
 window.user_get_data:
 	mov ax, 0x10
 	mov es, ax
@@ -3630,6 +3648,7 @@ module.debug_int:
 	jne module.wait_for_key
 	mov esi, ebp
 	mov ecx, 9
+	xor edx, edx
 module.debug_loop:
 	push ecx
 	push edx

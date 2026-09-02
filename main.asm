@@ -272,6 +272,16 @@ kernel.init:
 	out 0x64, al
 	mov al, 0xf4
 	out 0x60, al
+	; FPU init
+	mov eax, cr0
+	and al, 0xf3
+	mov cr0, eax
+	fninit
+	fnstsw [0x7500]
+	cmp word[0x7500], 0
+	jne kernel.init_wno_fpu
+	or byte[0x7327], 0x01
+kernel.init_wno_fpu:
 	; load files
 	mov esi, kernel.ld_font
 	mov edx, 0x24400
@@ -288,8 +298,10 @@ kernel.init:
 	call disk.get_file
 	cmp ah, 0x01
 	jne kernel.no_def_pp
-	cli
-	hlt
+	mov al, 0x1b
+	mov ecx, 0x5000
+	mov edi, 0x8a000
+	rep stosb
 kernel.no_def_pp:
 	; drivers
 	;call module.pci_init
@@ -2426,8 +2438,10 @@ window.updatetile:
 	jb window.color
 	mov ah, al
 	and al, 0x7f
-	cmp al, ' '
+	cmp al, 0x10
 	jb window.symbol
+	cmp al, 0x20
+	jb window.buffer
 	pushad
 	call window.blank
 	popad
@@ -2542,6 +2556,36 @@ window.symbol:
 	mov ax, 0x23
 	mov es, ax
 	mov ds, ax
+	ret
+window.buffer:
+	push edi
+	mov edi, dword[0x7320]
+	mov edi, dword[edi+0x30]
+	mov dx, word[edi+2]
+	sub dx, word[edi]
+	add edi, 4
+	sub al, 0x10
+	movzx eax, al
+	push eax
+	mov al, 0
+	repne scasb
+	mov al, dh
+	mul dl
+	movzx eax, ax
+	add edi, eax
+	pop eax
+	mov esi, dword[edi+eax*4]
+	pop edi
+	test esi, esi
+	jz window.blank
+	mov ecx, 8
+window.buffer_cpy:
+	push ecx
+	mov ecx, 8
+	rep movsd
+	add edi, (1280-8)*4
+	pop ecx
+	loop window.buffer_cpy
 	ret
 window.taskbar:
 	mov eax, 0x888888
@@ -3275,42 +3319,6 @@ window.symbols_font:
 	db 01011010b
 	db 01000010b
 	db 01111110b
-
-	db 00011000b
-	db 00111100b
-	db 01111110b
-	db 11111111b
-	db 00011000b
-	db 00011000b
-	db 00011000b
-	db 00011000b
-
-	db 00001000b
-	db 00001100b
-	db 00001110b
-	db 11111111b
-	db 11111111b
-	db 00001110b
-	db 00001100b
-	db 00001000b
-
-	db 00010000b
-	db 00110000b
-	db 01110000b
-	db 11111111b
-	db 11111111b
-	db 01110000b
-	db 00110000b
-	db 00010000b
-
-	db 00011000b
-	db 00011000b
-	db 00011000b
-	db 00011000b
-	db 11111111b
-	db 01111110b
-	db 00111100b
-	db 00011000b
 window.symbols_font_end:
 times 0x6 * 512 - ($ - $$) db 0
 window.explorer:
@@ -3708,73 +3716,17 @@ module.mazes:
 	dw module.mazes_data-module.mazes
 	dw 0, 0, 0
 module.mazes_title:
-	db "Lasers 'n Mazes - Lite Remake"
+	db "applkitaion"
 module.mazes_data:
-	db 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1c, 0x1f, 0x1f, 0
-	db 0x1f, 0x1f, 0x1c, 0x1f, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0
-	db 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1c, 0x1f, 0x1c, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1c, 0x1f, 0
-	db 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1f, 0
-	db 0x1f, 0x1c, 0x1c, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1f, 0x1f, 0x1f, 0x1c, 0x1f, 0x1f, 0
-	db "Press any key to Start", 0
 module.mazes_code:
-	pop esi
-	mov ah, 0x04
-	mov bl, 0x19
+	mov ecx, 64
+	mov ah, 0x40
 	int 0x30
-	mov ecx, 45*7
-	mov ah, 0x05
-	mov bl, 0x1c
-	int 0x30
-	mov esi, dword[esp]
-	mov ecx, 5
-	mov dx, 0x0101
-module.mazes_start:
-	push ecx
-	push edx
-	mov ah, 0x00
-	int 0x30
-	pop edx
-	pop ecx
-	inc dl
-	loop module.mazes_start
-	mov dx, 0x0208
-	mov ah, 0x00
-	int 0x30
-module.mazes_poll:
-	mov ah, 0xfc
-	int 0x30
-	mov ah, 0xfb
-	int 0x30
-	cmp bl, 0
-	je module.mazes_poll
-	call module.mazes_game
-	jmp $
-module.mazes_game:
-	mov ah, 0x04
-	mov bl, 0x1b
-	int 0x30
-	mov dx, 0x0303
-module.mazes_fill:
-	push edx
-	mov bl, 0x10
+	mov dx, 0x0000
+	mov bl, 0x90
 	mov ah, 0x03
 	int 0x30
-	pop edx
-	add dh, 2
-	cmp dh, 21*2
-	jb module.mazes_fill
-	mov dh, 1
-	add dl, 2
-	cmp dl, 16*2
-	jb module.mazes_fill
-	mov ecx, 0x10101010
-	mov edi, ecx
-	mov dx, 0x0101
-	mov bx, 0x291f
-	mov ah, 0x06
-	int 0x30
-	
-	ret
+	jmp $
 module.mazes_end:
 times 0xb * 512 - ($ - $$) db 0
 	incbin "wallpaper.spf"

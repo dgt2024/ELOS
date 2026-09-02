@@ -23,6 +23,7 @@ Userland -> 0x10000000
 0x7320 -> DWORD PCB*
 0x7324 -> Current Thread
 0x7325 -> Timer
+0x7327 -> Flags (0:FPU)
 0x7380 -> NET v:d
 0x7384 -> NET MMIO
 0x7388 -> NET send ; EDI/ECX

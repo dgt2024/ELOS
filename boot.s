@@ -1,6 +1,13 @@
 ; This is the ELOS7 Source Code
 ; 0x5000 PD
 ; 0x6000 PT <1MB IP
+; Memory Map
+; 0x500 X res
+; 0x502 Y res
+; 0x504 LFB (physical)
+; 0x508 TSC start
+; 0x510 Object Count
+; 0x511 Process Count
 section .boot
 global start
 use16
@@ -66,6 +73,33 @@ start:
 	mov ax, 0x4f02
 	pop bx
 	int 0x10
+	; Set RAM sectors
+	xor ebx, ebx
+	mov ax, 0x6000
+	mov es, ax
+	mov di, 0x0000
+	mov byte[0x504], 0
+ram_find:
+	mov eax, 0xe820
+	mov ecx, 24
+	mov edx, 0x534D4150
+	int 0x15
+	jc ram_find
+	cmp eax, 0x534D4150
+	jne ram_find
+	cmp ebx, 0
+	je ram_find_end
+	cmp dword[es:di+0x4], 0
+	jne ram_find
+	cmp dword[es:di+0x10], 1
+	jne ram_find
+	mov eax, dword[es:di]
+	cmp eax, 0x100000
+	jb ram_find
+	add di, 16
+	inc byte[0x504]
+	jmp ram_find
+ram_find_end:
 	; Start protected mode
 	lgdt [gdt_table]
 	mov eax, cr0
@@ -116,7 +150,7 @@ page_dir_vram:
 	stosd
 	add eax, 0x400000
 	loop page_dir_vram
-	; Start paging
+	; Start paging (CR4.PSE set)
 	mov eax, 0x5000
 	mov cr3, eax
 	mov eax, cr4
@@ -125,6 +159,28 @@ page_dir_vram:
 	mov eax, cr0
 	or eax, 0x80000001
 	mov cr0, eax
+	; Clear KABM
+	mov ecx, 0x40000
+	mov edi, 0x20000
+	mov al, 0xff
+	rep stosb
+	; Initialize KABM
+	movzx ecx, byte[0x504]
+	mov edi, 0x60000
+kabm_init_loop:
+	push ecx
+	mov eax, dword[edi]
+	shr eax, 11
+	sub eax, 0x200
+	mov ecx, dword[edi+8]
+	shr ecx, 11
+	inc ecx
+kabm_bit_loop:
+	btr dword[0x20000], eax
+	inc eax
+	loop kabm_bit_loop
+	pop ecx
+	loop kabm_init_loop
 	cli
 	hlt
 section .signature

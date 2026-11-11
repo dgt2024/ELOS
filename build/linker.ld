@@ -4,4 +4,6 @@ SECTIONS {
 	.boot : { *(.boot) }
 	. = 0x7dfe;
 	.signature : { *(.signature) }
+	.memory : { *(.memory) }
+	.devices : { *(.devices) }
 }

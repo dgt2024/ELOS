@@ -8,8 +8,9 @@
 ; 0x508 TSC start
 ; 0x510 Object Count
 ; 0x511 Process Count
-section .boot
+extern initializeMemory
 global start
+section .boot
 use16
 start:
 	cli
@@ -21,14 +22,14 @@ start:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
+	mov ax, 0x0201
+	mov bx, 0x7e00
+	mov cx, 0x0002
+	mov dh, 0
+	int 0x13
 	rdtsc
 	mov dword[0x508], eax
 	mov dword[0x50c], ecx
-	mov ax, 0x0201
-	mov bx, 0x7c00
-	mov cx, 0x0001
-	mov dh, 0
-	int 0x13
 	mov ax, 0x4f15
 	xor bx, bx
 	xor cx, cx
@@ -36,14 +37,14 @@ start:
 	xor di, di
 	int 0x10
 	cmp ax, 0x004f
-	jne vesa_error
+	jne videoError
 	mov ax, 0x4f15
 	mov bl, 0x01
 	xor dx, dx
 	mov di, 0x1000
 	int 0x10
 	cmp ax, 0x004f
-	jne vesa_error
+	jne videoError
 	; Get X resolution
 	mov al, byte[0x1038]
 	mov byte[0x500], al
@@ -66,7 +67,7 @@ start:
 	push cx
 	int 0x10
 	test byte[0x1000], 0x80
-	jz vesa_error
+	jz videoError
 	; Store and set videomode
 	mov eax, dword[0x1028]
 	mov dword[0x504], eax
@@ -79,47 +80,47 @@ start:
 	mov es, ax
 	mov di, 0x0000
 	mov byte[0x504], 0
-ram_find:
+bootRamFind:
 	mov eax, 0xe820
 	mov ecx, 24
 	mov edx, 0x534D4150
 	int 0x15
-	jc ram_find
+	jc bootRamFind
 	cmp eax, 0x534D4150
-	jne ram_find
+	jne bootRamFind
 	cmp ebx, 0
-	je ram_find_end
+	je bootRamFind_end
 	cmp dword[es:di+0x4], 0
-	jne ram_find
+	jne bootRamFind
 	cmp dword[es:di+0x10], 1
-	jne ram_find
+	jne bootRamFind
 	mov eax, dword[es:di]
 	cmp eax, 0x100000
-	jb ram_find
+	jb bootRamFind
 	add di, 16
 	inc byte[0x504]
-	jmp ram_find
-ram_find_end:
+	jmp bootRamFind
+bootRamFind_end:
 	; Start protected mode
-	lgdt [gdt_table]
+	lgdt [gdtTable]
 	mov eax, cr0
 	or eax, 0x1
 	mov cr0, eax
-	jmp 0x08:main
+	jmp 0x08:protectedMain
 	hlt
-vesa_error:
+videoError:
 	cli
 	hlt
-gdt_table:
-	dw gdt_descriptor_table_end - gdt_descriptor_table - 1
-	dd gdt_descriptor_table
-gdt_descriptor_table:
+gdtTable:
+	dw gdtDescriptorTable_end - gdtDescriptorTable - 1
+	dd gdtDescriptorTable
+gdtDescriptorTable:
 	dq 0
 	dq 0x00cf9a000000ffff
 	dq 0x00cf92000000ffff
-gdt_descriptor_table_end:
+gdtDescriptorTable_end:
 use32
-main:
+protectedMain:
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
@@ -132,10 +133,10 @@ main:
 	mov eax, 1
 	mov edi, 0x6000
 	mov ecx, 0x400
-page_dir_sys_mb:
+pageCreateSystemMB:
 	stosd
 	add eax, 0x1000
-	loop page_dir_sys_mb
+	loop pageCreateSystemMB
 	; Initialize VRAM PD
 	mov edi, 0x5f00
 	movzx ebx, word[0x500]
@@ -146,10 +147,10 @@ page_dir_sys_mb:
 	mov eax, dword[0x504]
 	and eax, 0xffdf0000
 	mov al, 0x83
-page_dir_vram:
+pageCreateVRAM:
 	stosd
 	add eax, 0x400000
-	loop page_dir_vram
+	loop pageCreateVRAM
 	; Start paging (CR4.PSE set)
 	mov eax, 0x5000
 	mov cr3, eax
@@ -159,28 +160,7 @@ page_dir_vram:
 	mov eax, cr0
 	or eax, 0x80000001
 	mov cr0, eax
-	; Clear KABM
-	mov ecx, 0x40000
-	mov edi, 0x20000
-	mov al, 0xff
-	rep stosb
-	; Initialize KABM
-	movzx ecx, byte[0x504]
-	mov edi, 0x60000
-kabm_init_loop:
-	push ecx
-	mov eax, dword[edi]
-	shr eax, 11
-	sub eax, 0x200
-	mov ecx, dword[edi+8]
-	shr ecx, 11
-	inc ecx
-kabm_bit_loop:
-	btr dword[0x20000], eax
-	inc eax
-	loop kabm_bit_loop
-	pop ecx
-	loop kabm_init_loop
+	call initializeMemory
 	cli
 	hlt
 section .signature

@@ -1,9 +1,9 @@
 ; This is the ELOS7 Source Code
 ; Memory Map
-; QWORD		0x1000 TSC start
+; QWORD		0x600 TSC start
 ; DWORD[]	0x5000 PD
 ; DWORD[]	0x6000 PT <1MB ident.
-section vstart=0x7c00
+section .boot vstart=0x7c00
 use16
 start:
 	cli
@@ -23,9 +23,9 @@ start:
 	rdtsc
 	mov dword[0x600], eax
 	mov dword[0x604], ecx
-	mov ax, 0x7f00
+	mov ax, 0x4f00
 	mov di, 0x1000
-	mov dword[di], "BV2E"
+	mov dword[di], "2EBV"
 	push es
 	int 0x10
 	pop es
@@ -44,18 +44,18 @@ videoSearch:
 	mov cx, ax
 	mov ax, 0x4f01
 	mov di, 0x1200
-	push esi
+	push si
 	push es
 	int 0x10
 	pop es
-	pop esi
+	pop si
 	cmp byte[0x1219], 32
 	jne videoSearch
 	cmp word[0x1212], 1280
 	jne videoSearch
 	cmp word[0x1214], 1024
 	jne videoSearch
-	mov bx, ax
+	mov bx, word[si-2]
 	or bx, 0x4000
 	mov ax, 0x4f02
 	int 0x10
@@ -70,11 +70,10 @@ bootRamFind:
 	mov ecx, 24
 	mov edx, 0x534D4150
 	int 0x15
-	jc bootRamFind
 	cmp eax, 0x534D4150
 	jne bootRamFind
 	cmp ebx, 0
-	je .end
+	je bootRamFind_end
 	cmp dword[es:di+0x4], 0
 	jne bootRamFind
 	cmp dword[es:di+0x10], 1
@@ -85,7 +84,7 @@ bootRamFind:
 	add di, 16
 	inc byte[0x608]
 	jmp bootRamFind
-.end:
+bootRamFind_end:
 	; Start protected mode
 	lgdt [gdtTable]
 	mov eax, cr0
@@ -96,13 +95,13 @@ videoError:
 	cli
 	hlt
 gdtTable:
-	dw gdtDescriptorTable.end - gdtDescriptorTable - 1
+	dw gdtDescriptorTable_end - gdtDescriptorTable - 1
 	dd gdtDescriptorTable
 gdtDescriptorTable:
 	dq 0
 	dq 0x00cf9a000000ffff
 	dq 0x00cf92000000ffff
-.end:
+gdtDescriptorTable_end:
 use32
 protectedMain:
 	mov ax, 0x10
@@ -145,8 +144,12 @@ pageCreateVRAM:
 	or eax, 0x80000001
 	mov cr0, eax
 	call initializeMemory
-	cli
-	hlt
+	mov edi, 0x00007c00
+	mov ax, 0xffff
+	mov bx, 0x0001
+	call registerContainer
+	jmp $
 times 510 - ($ - $$) db 0
 	dw 0xaa55
 %include "kernel/memory.s"
+%include "kernel/container.s"

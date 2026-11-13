@@ -1,3 +1,5 @@
+; Global Functions:
+;	initializeMemory -> Initializes memory
 initializeMemory:
 	; Clear KABM
 	mov ecx, 0x40000

@@ -1,5 +1,3 @@
-global initializeMemory
-section .memory
 initializeMemory:
 	; Clear KABM
 	mov ecx, 0x40000

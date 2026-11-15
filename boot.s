@@ -1,13 +1,3 @@
-; This is the ELOS7 Source Code
-; Memory Map
-; QWORD		0x600 TSC start
-; DWORD		0x608 LFB ptr
-; DWORD[]	0x5000 PD
-; DWORD[]	0x6000 PT <1MB ident.
-
-; TODO:
-; - Get drive parameters (currently hardcoded to native primary master ATA)
-; - Make Disk driver an LCF module
 section .boot vstart=0x7c00
 use16
 start:
@@ -151,14 +141,12 @@ pageCreateVRAM:
 	or eax, 0x80000001
 	mov cr0, eax
 	call initializeMemory
+	; Setup PID0
 	call kernelPageAllocate
 	mov edi, edx
-	mov ax, 0xffff
-	mov bx, 0x0001
+	mov ax, 0x081c
+	mov bx, 0x0003
 	call registerContainer
-	mov edi, 0x10000
-	mov eax, 1
-	call readDiskSector
 	cli
 	hlt
 times 510 - ($ - $$) db 0
@@ -166,3 +154,4 @@ times 510 - ($ - $$) db 0
 %include "kernel/memory.s"
 %include "kernel/container.s"
 %include "kernel/disk.s"
+%include "kernel/procedure.s"

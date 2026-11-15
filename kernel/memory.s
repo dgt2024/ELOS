@@ -1,6 +1,3 @@
-; Global Functions:
-;	initializeMemory -> Initializes memory
-;	kernelPageAllocate -> Allocates a page of memory EDX=ADDR,AL=STATUS
 kernelPageAllocate:
 	xor edx, edx
 kernelPageAllocate_find:

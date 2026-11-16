@@ -4,6 +4,7 @@ registerContainer:
 	mov dx, -1 ; -1 as loop increments first
 	mov cx, ax
 	
+	; DX=handle,CX=flags,ESI=object_pointer
 registerContainer_iterate:
 	lodsw
 	inc dx
@@ -21,6 +22,7 @@ registerContainer_iterate:
 	mov dword[esi-0x04], edi
 	mov al, 0 ; Success
 	ret
+	
 registerContainer_err:
 	mov al, 1 ; Error
 	ret

@@ -1,4 +1,5 @@
 kernelPageAllocate:
+	; EDX=bit
 	; Find unused memory
 	xor edx, edx
 kernelPageAllocate_find:

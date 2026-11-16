@@ -155,6 +155,7 @@ pageCreateSystemMB:
 	mov edi, 0x5f00
 	
 	; Get VRAM size in megabytes
+	; EBX=width,ECX=height
 	movzx ebx, 1280
 	movzx ecx, 1024
 	imul ecx, ebx

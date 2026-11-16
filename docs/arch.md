@@ -6,15 +6,15 @@ BYTE	0x60C		RAM block count
 DWORD[]	0x5000		PD
 DWORD[]	0x6000		PT <1MB ident.
 
+
 TODO:
  - Get drive parameters (currently hardcoded to native primary master ATA)
  - Make Disk driver an LCF module
 
 Global Functions:
 kernel/memory.asm
- - initializeMemory -> Initializes memory
- - kernelPageAllocate -> Allocates a page of memory EDX=ADDR,AL=STATUS
+ - initializeMemory -> NO INPUT->NO OUTPUT
+ - kernelPageAllocate -> NO INPUT->AL=STATUS,EDX=ADDR
 kernel/container.asm
- - registerContainer -> EDI=PTR,AX=FLAGS,BL=TYPE,BH=OWNER -> AL=STATUS,DX=HANDLE
-kernel/procedure.asm
- - registerProcedure -> DX=PSCH -> AL=STATUS,DL=EIP
+ - registerContainer -> EDI=PTR,AX=FLAGS,BX=HNDL -> AL=STATUS,DX=HANDLE
+ - getRawContainer -> AX=HANDLE -> AL=STATUS,EDX=PTR

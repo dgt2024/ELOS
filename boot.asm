@@ -156,8 +156,8 @@ pageCreateSystemMB:
 	
 	; Get VRAM size in megabytes
 	; EBX=width,ECX=height
-	movzx ebx, 1280
-	movzx ecx, 1024
+	mov	ebx, 1280
+	mov ecx, 1024
 	imul ecx, ebx
 	shr ecx, 22
 	inc ecx
@@ -185,10 +185,33 @@ pageCreateVRAM:
 	mov eax, cr0
 	or eax, 0x80000001
 	mov cr0, eax
+	
+	call initializeMemory
+	
+	; Start PID=0
+	call kernelPageAllocate
+	
+	mov edi, edx
+	mov ax, 0x0023
+	mov bx, 0x0000
+	call registerContainer ; PROCEDURE DATA
 
+	mov ax, dx
+	call getRawContainer
+	mov ebp, edx
+	; ebp=procedure data
+	
+	mov edi, 0x8000
+	mov ax, 0x0024
+	mov bx, 0x0000
+	call registerContainer ; CODE DATA
+	
 	cli
 	hlt
 times 510 - ($ - $$) db 0
 	dw 0xaa55
-%include "kernel/memory.s"
-%include "kernel/container.s"
+%include "kernel/memory.asm"
+%include "kernel/container.asm"
+times 1024 - ($ - $$) db 0
+	cli
+	hlt

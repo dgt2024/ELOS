@@ -10,10 +10,10 @@ TODO:
  - Make Disk driver an LCF module
 
 Global Functions:
-kernel/memory.s
+kernel/memory.asm
  - initializeMemory -> Initializes memory
  - kernelPageAllocate -> Allocates a page of memory EDX=ADDR,AL=STATUS
-kernel/container.s
+kernel/container.asm
  - registerContainer -> EDI=PTR,AX=FLAGS,BL=TYPE,BH=OWNER -> AL=STATUS,DX=HANDLE
-kernel/disk.s
- - readDiskSector -> EDI=BUFF,EAX=SECTOR# -> AL=STATUS
+kernel/procedure.asm
+ - registerProcedure -> DX=PSCH -> AL=STATUS,DL=EIP

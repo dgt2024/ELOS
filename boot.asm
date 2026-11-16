@@ -192,5 +192,3 @@ times 510 - ($ - $$) db 0
 	dw 0xaa55
 %include "kernel/memory.s"
 %include "kernel/container.s"
-%include "kernel/disk.s"
-%include "kernel/procedure.s"

@@ -3,8 +3,6 @@ use16
 start:
 	cli
 	cld
-	
-	; Setup Segment Selectors
 	xor ax, ax
 	mov ds, ax
 	mov es, ax
@@ -20,122 +18,109 @@ start:
 	mov dh, 0
 	int 0x13
 	
-	; Store TSC clock at boot
+	; Store TSC clock to logging stats
 	rdtsc
 	mov dword[0x600], eax
 	mov dword[0x604], ecx
 	
-	; Get VESA data
+	; Search for 1280x1024x32bpp
 	mov ax, 0x4f00
 	mov di, 0x1000
 	mov dword[di], "2EBV"
-	
 	push es
 	int 0x10
 	pop es
 	
 	cmp ax, 0x004f
 	jne videoError
-	
 	cmp dword[0x1000], "VESA"
 	jne videoError
 	
-	; 0x1000=data
+	; Get mode array to iterate
 	mov si, word[0x100e]
 	mov ax, word[0x1010]
 	mov ds, ax
 	
-	; Find 1280x1024x32bpp
 videoSearch:
 	lodsw
 	cmp ax, 0xffff
 	je videoError
 	
-	; Get mode info
+	; Find VBE mode resolution
 	mov cx, ax
 	mov ax, 0x4f01
 	mov di, 0x1200
-	
 	push si
 	push es
 	int 0x10
 	pop es
 	pop si
 	
-	; 0x1200=data
+	; Check whether mode was found
 	cmp byte[0x1219], 32
-	jne videoSearch ; 32bpp?
+	jne videoSearch
 	
 	cmp word[0x1212], 1280
-	jne videoSearch ; 1280 width?
+	jne videoSearch
 	
 	cmp word[0x1214], 1024
-	jne videoSearch ; 1024 width?
+	jne videoSearch
 	
+	; Find framebuffer pointer
 	mov eax, dword[0x1228]
 	mov dword[0x608], eax
 	
-	; Set current mode
+	; Set mode
 	mov bx, word[si-2]
 	or bx, 0x4000
 	mov ax, 0x4f02
-	
 	int 0x10
 	
-	; Set RAM sectors
+	; Read RAM block array
 	xor ebx, ebx
 	mov ax, 0x6000
 	mov es, ax
-	mov di, 0x0000 ; Write RAM map to 0x60000
-	mov byte[0x60c], 0 ; RAM map block count
-	
-	; Iterate RAM blocks
+	mov di, 0x0000
+	mov byte[0x60c], 0
 bootRamFind:
 	; Get RAM block
 	mov eax, 0xe820
 	mov ecx, 24
 	mov edx, 0x534D4150
-	
 	int 0x15
 	
-	cmp eax, 0x534D4150 ; Success?
+	cmp eax, 0x534D4150
 	jne bootRamFind
 	
-	test ebx, ebx ; Circled back to first entry?
+	test ebx, ebx ; Item 0
 	jz bootRamFind_end
 	
-	cmp dword[es:di+0x4], 0 ; Block Size 0?
+	cmp dword[es:di+0x4], 0 ; offset ram.size
 	jne bootRamFind
 	
-	cmp dword[es:di+0x10], 1 ; Usable RAM?
+	cmp dword[es:di+0x10], 1 ; offset ram.type (1=usable)
 	jne bootRamFind
 	
-	; Get RAM map
-	cmp dword[es:di], 0xa0000 ; Kernel Data?
+	; Limit to non-kernel areas
+	cmp dword[es:di], 0xa0000
 	jb bootRamFind
-	
-	; Next item
+
 	add di, 16
 	inc byte[0x60c]
 	jmp bootRamFind
 bootRamFind_end:
-
-	; Set up GDT table
-	lgdt [gdtTable]
 	
-	; Set CR0 flags
+	; Switch to 32-bit mode
+	lgdt [gdtTable]
 	mov eax, cr0
 	or eax, 0x1
 	mov cr0, eax
-	
-	; Jump
 	jmp 0x08:protectedMain
 	
 videoError:
 	cli
 	hlt
 
-; GDT table
 gdtTable:
 	dw gdtDescriptorTable_end - gdtDescriptorTable - 1
 	dd gdtDescriptorTable
@@ -147,7 +132,6 @@ gdtDescriptorTable_end:
 
 use32
 protectedMain:
-	; Setup 32-bit segment selectors
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
@@ -157,53 +141,50 @@ protectedMain:
 	mov esp, 0x7c00
 	
 	; Initialize kernel data pages
-	mov dword[0x5000], 0x6003 ; Kernel data PT
-	mov eax, 1 ; Flags (identity mapping)
-	mov edi, 0x6000 ; Kernel data PTE
-	mov ecx, 0x400 ; Count
+	mov dword[0x5000], 0x6003
+	mov eax, 1
+	mov edi, 0x6000
+	mov ecx, 0x400
 	
-	; Create PDE kernel data
 pageCreateSystemMB:
 	stosd
 	add eax, 0x1000
 	loop pageCreateSystemMB
 	
-	; Initialize VRAM PD
+	; Initialize VRAM data pages
 	mov edi, 0x5f00
 	
 	; Get VRAM size in megabytes
-	movzx ebx, 1280 ; width
-	movzx ecx, 1024 ; height
+	movzx ebx, 1280
+	movzx ecx, 1024
 	imul ecx, ebx
 	shr ecx, 22
 	inc ecx
 	
-	; Initialize VRAM pages
-	mov eax, dword[0x1228] ; VRAM pointers
-	and eax, 0xffdf0000 ; Masking
-	mov al, 0x83 ; Flags
+	; Get VRAM pointer
+	mov eax, dword[0x1228]
+	and eax, 0xffdf0000
+	mov al, 0x83
 	
-	; Create PDE for VRAM data
 pageCreateVRAM:
 	stosd
 	add eax, 0x400000
 	loop pageCreateVRAM
 	
-	; Set CR3
+	; Set up page directory
 	mov eax, 0x5000
 	mov cr3, eax
 	
-	; Set CR4.PSE for VRAM
+	; Set CR4.PSE for larger pages
 	mov eax, cr4
 	or eax, 0x00000010
 	mov cr4, eax
 	
-	; Set CR0 paging flags
+	; Start paging
 	mov eax, cr0
 	or eax, 0x80000001
 	mov cr0, eax
 
-	; Temporarily end
 	cli
 	hlt
 times 510 - ($ - $$) db 0

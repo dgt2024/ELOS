@@ -1,9 +1,10 @@
 This is the ELOS7 Source Code
 Memory Map
-QWORD	0x600 TSC start
-DWORD	0x608 LFB ptr
-DWORD[]	0x5000 PD
-DWORD[]	0x6000 PT <1MB ident.
+QWORD	0x600		TSC start
+DWORD	0x608		LFB ptr
+BYTE	0x60C		RAM block count 
+DWORD[]	0x5000		PD
+DWORD[]	0x6000		PT <1MB ident.
 
 TODO:
  - Get drive parameters (currently hardcoded to native primary master ATA)

@@ -1,4 +1,4 @@
-kernelPageAllocate:
+pageAllocate:
 	; bit
 	; EDX=bitask
 	xor edx, edx
@@ -6,38 +6,45 @@ kernelPageAllocate:
 	movzx ecx, al
 	inc ecx
 	
-kernelPageAllocate_search:
+pageAllocate_search:
 	push edx
 	push ecx
 	
-	; Test for SIZE+1 pages
-kernelPageAllocate_bitloop:
+pageAllocate_bitloop:
 	bt dword[0x10000], edx
-	jc kernelPageAllocate_skip
-	loop kernelPageAllocate_bitloop
+	inc edx
+	jc pageAllocate_skip
+	loop pageAllocate_bitloop
 
 	pop ecx
-	pop edx
-	jmp kernelPageAllocate_succeed
+	mov edx, dword[esp]
 	
-kernelPageAllocate_skip:
+pageAllocate_setloop:
+	bts dword[0x10000], edx
+	inc edx
+	loop pageAllocate_setloop
+	
+	pop edx
+	jmp pageAllocate_succeed
+	
+pageAllocate_skip:
 	pop ecx
 	pop edx
 	
 	inc edx
 	cmp edx, 0x100000
-	jae kernelPageAllocate_error
-	jmp kernelPageAllocate_search
+	jae pageAllocate_error
+	jmp pageAllocate_search
 	
-kernelPageAllocate_succeed:
+pageAllocate_succeed:
 	; Calculate physical address of page
 	shl edx, 12
 	add edx, 0x100000
-	mov al, 0 ; Success
+	clc ; Success
 	ret
 	
-kernelPageAllocate_error:
-	mov al, 1 ; Error
+pageAllocate_error:
+	stc ; Error
 	ret
 
 initializeMemory:
@@ -82,4 +89,6 @@ initializeMemory_bitloop:
 	mov edi, 0x20000
 	mov al, 0
 	rep stosb
+	
+	mov dword[0x608], 0 ; TID
 	ret

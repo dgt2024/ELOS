@@ -20,11 +20,11 @@ registerContainer_iterate:
 	mov word[esi-0x08], cx
 	mov word[esi-0x06], bx
 	mov dword[esi-0x04], edi
-	mov al, 0 ; Success
+	clc ; Success
 	ret
 	
 registerContainer_err:
-	mov al, 1 ; Error
+	stc ; Error
 	ret
 	
 getRawContainer:
@@ -36,9 +36,9 @@ getRawContainer:
 	jz getRawContainer_error
 	
 	mov edx, dword[eax * 8 + 0x20004] ; Container.pointer
-	mov al, 0 ; Success
+	clc ; Success
 	ret
 	
 getRawContainer_error:
-	mov al, 1 ; Error
+	stc ; Error
 	ret

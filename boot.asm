@@ -194,15 +194,21 @@ pageCreateVRAM:
 	mov bx, 0x0000
 	call registerContainer ; CODE DATA
 	mov ax, dx
-	
-	; call registerProcess
+	mov bl, 0xdf
+	mov ecx, kprocName_end-kprocName
+	mov esi, kprocName
+	call createProcedure
 	
 	cli
 	hlt
+kprocName:
+	db "kernelproc"
+kprocName_end:
 times 510 - ($ - $$) db 0
 	dw 0xaa55
 %include "kernel/memory.asm"
 %include "kernel/container.asm"
+%include "kernel/procedure.asm"
 times 1024 - ($ - $$) db 0
 	cli
 	hlt

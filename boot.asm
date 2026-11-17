@@ -144,7 +144,7 @@ protectedMain:
 	mov dword[0x5000], 0x6003
 	mov eax, 1
 	mov edi, 0x6000
-	mov ecx, 0x400
+	mov ecx, 0x100
 	
 pageCreateSystemMB:
 	stosd
@@ -189,22 +189,13 @@ pageCreateVRAM:
 	call initializeMemory
 	
 	; Start PID=0
-	call kernelPageAllocate
-	
-	mov edi, edx
-	mov ax, 0x0023
-	mov bx, 0x0000
-	call registerContainer ; PROCEDURE DATA
-
-	mov ax, dx
-	call getRawContainer
-	mov ebp, edx
-	; ebp=procedure data
-	
 	mov edi, 0x8000
 	mov ax, 0x0024
 	mov bx, 0x0000
 	call registerContainer ; CODE DATA
+	mov ax, dx
+	
+	; call registerProcess
 	
 	cli
 	hlt

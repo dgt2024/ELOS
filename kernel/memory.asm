@@ -1,15 +1,33 @@
 kernelPageAllocate:
-	; EDX=bit
-	; Find unused memory
+	; bit
+	; EDX=bitask
 	xor edx, edx
-kernelPageAllocate_find:
-	bts dword[0x10000], edx
-	jnc kernelPageAllocate_succeed
+	and al, 0x0f
+	movzx ecx, al
+	inc ecx
+	
+kernelPageAllocate_search:
+	push edx
+	push ecx
+	
+	; Test for SIZE+1 pages
+kernelPageAllocate_bitloop:
+	bt dword[0x10000], edx
+	jc kernelPageAllocate_skip
+	loop kernelPageAllocate_bitloop
+
+	pop ecx
+	pop edx
+	jmp kernelPageAllocate_succeed
+	
+kernelPageAllocate_skip:
+	pop ecx
+	pop edx
 	
 	inc edx
 	cmp edx, 0x100000
 	jae kernelPageAllocate_error
-	jmp kernelPageAllocate_find
+	jmp kernelPageAllocate_search
 	
 kernelPageAllocate_succeed:
 	; Calculate physical address of page

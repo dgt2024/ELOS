@@ -9,12 +9,12 @@ giveContainer:
 	or bp, 0x0005
 
 	; Map PDHNDL to temporary virtual address
-	mov dword[0x6400], ebp
-	invlpg[0x100000]
+	mov dword[0x4000], ebp
+	invlpg[0x200000]
 
-	inc byte[0x10002c]
+	inc byte[0x20002c]
 
-	mov edi, 0x100200
+	mov edi, 0x200200
 
 	mov edx, eax
 	xor ax, ax
@@ -40,46 +40,97 @@ mapContainer:
 	or bp, 0x0005
 
 	; Map PDHNDL to temporary virtual address
-	mov dword[0x6400], ebp
+	mov dword[0x4000], ebp
 
 	push ebp
 	add ebp, 0x1000
-	mov dword[0x6404], ebp
+	mov dword[0x4008], ebp
 	pop ebp
 
-	invlpg[0x100000]
-	invlpg[0x101000]
+	invlpg[0x200000]
+	invlpg[0x201000]
 
 	; find first empty slot in PD
 	push eax ; save raw HNDL
 
-	mov edi, 0x101000
+	mov edi, 0x201000
 	xor eax, eax
 	mov ecx, 0x200
 
-	repne scasd
+mapContainer_loop:
+	add edi, 4
+	scasd
+	je mapContainer_found
+	loop mapContainer_loop
+
 	pop eax
-	jne mapContainer_error
+	jmp mapContainer_error
 
-	mov ebp, dword[edi-4]
+mapContainer_found:
+	pop eax
 
-	test word[0x100034], 0x1ff
+	mov ebp, dword[edi-8]
+
+	test word[0x200034], 0x1ff
 	jz mapContainer_newPT
 mapContainer_afterNewPT:
-	inc word[0x100034]
+	inc word[0x200034]
 
-	mov dword[0x6400], ebp
-	invlpg[0x100000]
+	or bp, 0x3
+	mov dword[0x4000], ebp
+	invlpg[0x200000]
 
 	movzx eax, ax
-	mov ebx, dword[eax*8+0x1fffc]
+	mov ebx, dword[eax*8+0x1fffc] ; low 32-bit
+	mov cl, byte[eax*8+0x1fff8]
+	xor eax, eax ; high 32-bit
 
-	cli
-	hlt
+	or bl, 0x01 ; present
+
+	test cl, 0x07
+	jz mapContainer_kernelMap
+	or bl, 0x04 ; supervisor
+mapContainer_kernelMap:
+	
+	test cl, 0x02
+	jnz mapContainer_writeMap
+	or bl, 0x02 ; r/w bit
+mapContainer_writeMap
+
+	test cl, 0x04
+	jnz mapContainer_codeMap
+	or eax, 0x80000000
+mapContainer_codeMap:
+	
+	push eax ; save high 64-bit
+	; Find empty PTE
+	mov edi, 0x200000
+	mov ecx, 0x200
+	xor eax, eax
+
+mapContainer_loopPTE:
+	add edi, 4
+	scasd
+	je mapContainer_foundPTE
+	loop mapContainer_loopPTE
+
+	pop eax
+	jmp mapContainer_error
+
+mapContainer_foundPTE:
+	pop eax
+
+	mov dword[edi-8], ebx
+	mov dword[edi-4], eax
+
+	clc
+	ret
 
 mapContainer_newPT:
 	; Allocates new page table and maps it to PDHNDL
 	push eax ; Save raw HNDL
+	push edi ; Save PD
+
 	mov al, 0
 	call pageAllocate
 	mov edi, edx
@@ -87,12 +138,17 @@ mapContainer_newPT:
 	call registerContainer
 	mov ax, dx
 	call getRawContainer
+	push edx ; Save raw HNDL page
 	call giveContainer
+	pop edx
 
-	inc byte[0x10002f] ; inc PDHNDL->PT#
+	inc byte[0x20002f] ; inc PDHNDL->PT#
 
-	mov dword[edi-4], eax ; Store page table in PD
-	mov ebp, eax
+	pop edi ; save PD
+
+	mov dword[edi-8], edx ; Store page table in PD
+	mov ebp, edx
+
 	pop eax
 	jmp mapContainer_afterNewPT
 

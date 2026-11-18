@@ -1,5 +1,6 @@
 This is the ELOS7 Source CodeBX
 Memory Map
+QWORD[]		0x5e0		PDPT
 QWORD		0x600		TSC start
 DWORD		0x608		LFB ptr					>> BEFORE initializeMemory();
 BYTE		0x60C		RAM block count			>> BEFORE initializeMemory();

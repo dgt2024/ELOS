@@ -140,19 +140,19 @@ protectedMain:
 	mov ss, ax
 	mov esp, 0x7c00
 	
+	mov edi, 0x5000
+	mov ecx, 0x800
+	xor eax, eax
+	rep stosd
+
 	; Initialize kernel data pages
-	mov dword[0x5000], 0x6003
-	mov eax, 1
-	mov edi, 0x6000
-	mov ecx, 0x100
-	
-pageCreateSystemMB:
-	stosd
-	add eax, 0x1000
-	loop pageCreateSystemMB
+	mov dword[0x5e0], 0x5001
+	mov dword[0x5f8], 0x6001
+	mov dword[0x5000], 0x83
+	mov dword[0x5008], 0x4003
 	
 	; Initialize VRAM data pages
-	mov edi, 0x5f00
+	mov edi, 0x6c00
 	
 	; Get VRAM size in megabytes
 	; EBX=width,ECX=height
@@ -166,24 +166,25 @@ pageCreateSystemMB:
 	mov eax, dword[0x1228]
 	and eax, 0xffdf0000
 	mov al, 0x83
-	
+
 pageCreateVRAM:
 	stosd
-	add eax, 0x400000
+	add edi, 4
+	add eax, 0x200000
 	loop pageCreateVRAM
 	
 	; Set up page directory
-	mov eax, 0x5000
+	mov eax, 0x5e0
 	mov cr3, eax
 	
-	; Set CR4.PSE for larger pages
+	; Set CR4.PSE for larger pages and CR4.PAE
 	mov eax, cr4
-	or eax, 0x00000010
+	or eax, 0x00000030
 	mov cr4, eax
 	
 	; Start paging
 	mov eax, cr0
-	or eax, 0x80000001
+	or eax, 0x80000000
 	mov cr0, eax
 
 	call initializeMemory
@@ -210,3 +211,4 @@ times 510 - ($ - $$) db 0
 %include "kernel/container.asm"
 %include "kernel/procedure.asm"
 %include "kernel/link.asm"
+times 512 * 3 - ($ - $$) db 0

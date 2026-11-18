@@ -21,28 +21,28 @@ createProcedure:
 	mov ax, dx
 	call getRawContainer
 	and dx, 0xf000 ; Remove SZ and LINK#
-	or dx, 0x0005
+	or dx, 0x0007
 
 	; Create temporal virtual address
-	mov dword[0x6400], edx
+	mov dword[0x4000], edx
 
 	push edx
 	add edx, 0x1000
-	mov dword[0x6404], edx
+	mov dword[0x4008], edx
 	pop edx
 
-	invlpg[0x100000]
-	invlpg[0x101000]
+	invlpg[0x200000]
+	invlpg[0x201000]
 
 	; Clear CR3 (page directory)
 	push ecx
-	mov edi, 0x100200
+	mov edi, 0x200200
 	mov ecx, 0x200
 	xor eax, eax
 	rep stosd
 	pop ecx
 
-	mov edi, 0x100000
+	mov edi, 0x200000
 	; edi=virtual page data,edx=physical page data,cx=PDHNDL
 
 	pop ax ; code container HNDL
@@ -55,7 +55,7 @@ createProcedure:
 	mov eax, dword[0x608]
 	mov dword[edi+0x28], eax ; PDHNDL->TID
 
-	mov dword[edi+0x2c], 0x101000 ; PDHNDL->CR3
+	mov dword[edi+0x2c], 0 ; PDHNDL->CR3
 
 	pop bx ; Load flags
 	mov byte[edi+0x30], bl ; PDHNDL->FLAGS (low byte)
@@ -70,6 +70,13 @@ createProcedure:
 	mov byte[edi+0x52], al ; PDHNDL->N#
 	mov dword[edi+0x54], eax ; PDHNDL->ALLOC#
 	mov dword[edi+0x58], eax ; PDHNDL->ALLOCADDR
+
+	; Set up PDPT
+	movzx ecx, cx
+	mov edx, dword[ecx*8+0x1fffc]
+	and dx, 0xf000
+	add dx, 0x1000
+	mov dword[edi+0x60], edx
 
 	mov dx, cx ; Save PDHNDL to dx
 

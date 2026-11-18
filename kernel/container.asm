@@ -1,7 +1,7 @@
 registerContainer:
 	; Find unused container
 	mov esi, 0x20000 ; offset container.flags
-	mov dx, -1 ; -1 as loop increments first
+	mov dx, 0 ; handles 1-indexed
 	mov cx, ax
 	
 	; DX=handle,CX=flags,ESI=object_pointer
@@ -31,11 +31,11 @@ getRawContainer:
 	movzx eax, ax
 	
 	; Null flags mean non-existent
-	mov dx, word[eax * 8 + 0x20000] ; Container.flags
+	mov dx, word[eax*8+0x1fff8] ; Container.flags
 	test dx, dx
 	jz getRawContainer_error
 	
-	mov edx, dword[eax * 8 + 0x20004] ; Container.pointer
+	mov edx, dword[eax*8+0x1fffc] ; Container.pointer
 	clc ; Success
 	ret
 	

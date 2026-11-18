@@ -14,14 +14,15 @@ TODO:
 
 Global Functions: NOTE: Functions with 'S' return status on carry flag
 kernel/memory.asm
- - initializeMemory -> NO INPUT->NO OUTPUT
-S- kernelPageAllocate -> AL=SIZE->EDX=ADDR
+ - initializeMemory -> NO INPUT -> NO OUTPUT
+S- kernelPageAllocate -> AL=SIZE -> EDX=ADDR
 kernel/container.asm
 S- registerContainer -> EDI=PTR,AX=FLAGS,BX=HNDL -> DX=HNDL
 S- getRawContainer -> AX=HANDLE -> EDX=PTR
 kernel/procedure.asm
 S- createProcedure -> ESI=NAME,AX=CODE HNDL,BL=FLAGS -> DX=PDHNDL
-
+kernel/link.asm
+S- giveContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
 
 0     1     2     3     4     5     6     7     8
 FLAGS       HNDL        ADDRESS        SZ LINK#
@@ -35,9 +36,9 @@ SR	SW	SC	SO	SPR	SPW	SPC	SPO
 00	EDI         ESI         EBP         ESP
 01	EBX         EDX         ECX         EAX
 02	EIP         EFLAGS      TID         CR3
-03	FLAGS S# SF SENT# SYSC# DESC.TID    UPTIME
+03	FLAGS S# SF MOBJ# SYSC# DESC.TID    UPTIME
 04	BP0         BP1         BP2         BP3
-05	BPF   N# R  ALLOC#		ALLOCADDR	LASTSENT
+05	BPF   N# S# ALLOC#		ALLOCADDR	LASTSENT
 06 -> Process Name (up to 32 chars)
 08 -> Children TID
 10 -> Notifications

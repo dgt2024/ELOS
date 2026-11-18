@@ -12,7 +12,7 @@ start:
 	int 0x10
 	
 	; Get kernel from disk
-	mov ax, 0x0201
+	mov ax, 0x0202
 	mov bx, 0x7e00
 	mov cx, 0x0002
 	mov dh, 0
@@ -185,12 +185,12 @@ pageCreateVRAM:
 	mov eax, cr0
 	or eax, 0x80000001
 	mov cr0, eax
-	
+
 	call initializeMemory
-	
+
 	; Start PID=0
 	mov edi, 0x8000
-	mov ax, 0x0024
+	mov ax, 0x0014
 	mov bx, 0x0000
 	call registerContainer ; CODE DATA
 	mov ax, dx
@@ -209,6 +209,4 @@ times 510 - ($ - $$) db 0
 %include "kernel/memory.asm"
 %include "kernel/container.asm"
 %include "kernel/procedure.asm"
-times 1024 - ($ - $$) db 0
-	cli
-	hlt
+%include "kernel/link.asm"

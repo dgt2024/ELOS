@@ -1,6 +1,7 @@
 pageAllocate:
 	; bit
 	; EDX=bitask
+	; clear page directory
 	xor edx, edx
 	and al, 0x0f
 	movzx ecx, al
@@ -52,7 +53,7 @@ initializeMemory:
 	mov edi, 0x10000
 	mov al, 0xff
 	rep stosb
-	
+
 	movzx ecx, byte[0x60c]
 	mov edi, 0x60000
 	
@@ -61,16 +62,16 @@ initializeMemory_loop:
 	
 	mov eax, dword[edi] ; offset ram_block.start
 	shr eax, 12
-	sub eax, 0x200
+	sub eax, 0x100
 	
 	mov ecx, dword[edi+8] ; offset ram_block.size
 	dec ecx
 	shr ecx, 12
 	inc ecx
-	
+
 	; Check start+size < 0x80000000
 	lea ebx, [eax+ecx]
-	cmp ebx, 0x80000000
+	cmp ebx, 0x80000
 	jbe initializeMemory_under2g
 	mov ecx, eax
 	neg ecx

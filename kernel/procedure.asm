@@ -21,7 +21,7 @@ createProcedure:
 	mov ax, dx
 	call getRawContainer
 	and dx, 0xf000 ; Remove SZ and LINK#
-	or dx, 0x0001
+	or dx, 0x0005
 
 	; Create temporal virtual address
 	mov dword[0x6400], edx
@@ -75,11 +75,14 @@ createProcedure:
 
 	pop esi
 	pop ecx
-	add edi, 0x60
+	add edi, 0x80
 
-	cmp ecx, 0x20
-	ja createProcedure_clamp
-createProcedure_afterclamp:
+	cmp ecx, 0x80
+	jbe createProcedure_noClamp
+
+	mov ecx, 0x80
+
+createProcedure_noClamp:
 	rep movsb
 
 	mov ax, dx
@@ -99,13 +102,12 @@ createProcedure_afterclamp:
 	mov word[eax*8+0x1fffa], dx
 
 	mov bx, dx
+	push ax
 	call giveContainer
+	pop ax
+	call mapContainer
 
 	ret
-
-createProcedure_clamp:
-	mov ecx, 0x20
-	jmp createProcedure_afterclamp
 
 registerProcedure:
 	mov esi, 0xc000

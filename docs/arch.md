@@ -35,12 +35,12 @@ SR	SW	SC	SO	SPR	SPW	SPC	SPO
 	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  10
 00	EDI         ESI         EBP         ESP
 01	EBX         EDX         ECX         EAX
-02	EIP         EFLAGS      TID         CR3
+02	EIP         EFLAGS      TID         O# S# P# PT#
 03	FLAGS S# SF MOBJ# SYSC# DESC.TID    UPTIME
 04	BP0         BP1         BP2         BP3
 05	BPF   N# S# ALLOC#		ALLOCADDR	LASTSENT
-06 -> Process Name (up to 32 chars)
-08 -> Children TID
+06 -> Page directory pointer table
+08 -> Process Name (up to 128 bytes)
 10 -> Notifications
 20 -> Owned Containers Array
 40 -> Shared Array

@@ -1,5 +1,6 @@
 giveContainer:
 	movzx eax, ax
+	movzx ebx, bx
 
 	cmp word[eax*8+0x1fffa], bx
 	jne giveContainer_error
@@ -58,9 +59,9 @@ mapContainer:
 	mov ecx, 0x200
 
 mapContainer_loop:
-	add edi, 4
 	scasd
 	je mapContainer_found
+	add edi, 4
 	loop mapContainer_loop
 
 	pop eax
@@ -69,10 +70,11 @@ mapContainer_loop:
 mapContainer_found:
 	pop eax
 
-	mov ebp, dword[edi-8]
+	mov ebp, dword[edi-12]
 
 	test word[0x200034], 0x1ff
 	jz mapContainer_newPT
+
 mapContainer_afterNewPT:
 	inc word[0x200034]
 
@@ -109,9 +111,9 @@ mapContainer_codeMap:
 	xor eax, eax
 
 mapContainer_loopPTE:
-	add edi, 4
 	scasd
 	je mapContainer_foundPTE
+	add edi, 4
 	loop mapContainer_loopPTE
 
 	pop eax
@@ -120,8 +122,8 @@ mapContainer_loopPTE:
 mapContainer_foundPTE:
 	pop eax
 
-	mov dword[edi-8], ebx
-	mov dword[edi-4], eax
+	mov dword[edi-4], ebx
+	mov dword[edi], eax
 
 	clc
 	ret
@@ -138,7 +140,7 @@ mapContainer_newPT:
 	call registerContainer
 	mov ax, dx
 	call getRawContainer
-	push edx ; Save raw HNDL page
+	push edx
 	call giveContainer
 	pop edx
 
@@ -147,7 +149,7 @@ mapContainer_newPT:
 	pop edi ; save PD
 
 	or dx, 0x0001
-	mov dword[edi-8], edx ; Store page table in PD
+	mov dword[edi-4], edx ; Store page table in PD
 	mov ebp, edx
 
 	pop eax

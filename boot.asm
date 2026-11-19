@@ -12,7 +12,7 @@ start:
 	int 0x10
 
 	; Get kernel from disk
-	mov ax, 0x0202
+	mov ax, 0x0203
 	mov bx, 0x7e00
 	mov cx, 0x0002
 	mov dh, 0
@@ -21,7 +21,7 @@ start:
 	; Get kernelproc from disk
 	mov ax, 0x0201
 	mov bx, 0x9000
-	mov cx, 0x0004
+	mov cx, 0x0005
 	mov dh, 0
 	int 0x13
 
@@ -82,9 +82,11 @@ gdtDescriptorTable:
 	dq 0
 	dq 0x00cf9a000000ffff
 	dq 0x00cf92000000ffff
+	dq 0x00cfba000000ffff
+	dq 0x00cfb2000000ffff
 	dq 0x00cffa000000ffff
 	dq 0x00cff2000000ffff
-	dq 0x00c4e00005000001
+	dq 0x3f4089fff5001b00
 gdtDescriptorTable_end:
 
 use32
@@ -102,11 +104,19 @@ protectedMain:
 	xor eax, eax
 	rep stosd
 
+	mov dword[0x608], 0 ; TID
+
 	; Initialize kernel data pages
 	mov dword[0x5e0], 0x5001
 	mov dword[0x5f8], 0x6001
 	mov dword[0x5000], 0x83
 	mov dword[0x5008], 0x4003
+	mov dword[0x5ff8], 0x3003
+	; TSS setup
+	mov dword[0x504], 0x7b00
+	mov word[0x508], 0x10
+	mov word[0x560], 0x1300
+	mov dword[0x3ff8], 0x0003
 
 	; Initialize VRAM data pages
 	mov edi, 0x6c00
@@ -122,7 +132,7 @@ protectedMain:
 	; Get VRAM pointer
 	mov eax, dword[0x1228]
 	and eax, 0xffdf0000
-	mov al, 0x83
+	mov al, 0x38
 
 pageCreateVRAM:
 	stosd
@@ -157,37 +167,11 @@ pageCreateVRAM:
 	mov esi, kprocName
 	call createProcedure
 
+	mov ax, 0x38
+	ltr ax
+
 	; Run procedures
-runProcedure:
-	mov ecx, 0x4000
-	mov esi, 0x10000
-
-runProcedure_loop:
-	xor eax, eax
-
-	repe scasd
-
-	call getRawContainer
-
-	push edx
-	or dx, 0x0003
-	mov dword[0x4000], edx
-	pop edx
-
-	invlpg[0x200000]
-
-	add dx, 0x60
-	mov cr3, edx ; Set CR3
-
-	cli
-	hlt
-
-	mov esp, dword[0x40000020]
-	popad
-
-	jmp dword[0x200020]
-	loop runProcedure_loop
-	jmp runProcedure
+	jmp startScheduler
 kprocName:
 	db "kernelproc"
 kprocName_end:
@@ -197,7 +181,8 @@ times 510 - ($ - $$) db 0
 %include "kernel/container.asm"
 %include "kernel/procedure.asm"
 %include "kernel/link.asm"
-times 512 * 3 - ($ - $$) db 0
+%include "kernel/scheduler.asm"
+times 512 * 4 - ($ - $$) db 0
 	cli
 	hlt
-times 512 * 4 - ($ - $$) db 0
+times 512 * 5 - ($ - $$) db 0

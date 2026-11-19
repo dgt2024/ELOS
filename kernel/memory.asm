@@ -99,6 +99,4 @@ initializeMemory_bitloop:
 	mov edi, 0x20000
 	mov al, 0
 	rep stosb
-	
-	mov dword[0x608], 0 ; TID
 	ret

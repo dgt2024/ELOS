@@ -48,8 +48,8 @@ createProcedure:
 	pop ax ; code container HNDL
 	call getRawContainer
 
+	mov dword[edi+0xc], 0x40001000 ; PDHNDL->ESP
 	mov dword[edi+0x20], 0x40001000 ; PDHNDL->EIP
-	mov dword[edi+0x2c], 0x40001000
 	mov dword[edi+0x24], 0x202 ; PDHNDL->EFLAGS
 
 	inc dword[0x608]
@@ -83,6 +83,16 @@ createProcedure:
 	mov dword[edi+0x78], 0x6001
 
 	mov dx, cx ; Save PDHNDL to dx
+
+	push edi ; Save raw PDHNDL
+
+	; Set all IOPB bits
+	add edi, 0x800
+	mov ecx, 0x800
+	mov al, 0xff
+	rep stosb
+
+	pop edi
 
 	pop esi
 	pop ecx
@@ -119,10 +129,10 @@ createProcedure_noClamp:
 	call pageAllocate
 	mov edi, edx
 	mov ax, 0x0003
-	mov ebx, dword[esp] ; RDHNDL
+	mov ebx, dword[esp+4] ; RDHNDL
 	call registerContainer
 	mov ax, dx
-	mov ebx, dword[esp]
+	mov ebx, dword[esp+4]
 	push ax
 	call giveContainer
 	pop ax

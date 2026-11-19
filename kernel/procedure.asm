@@ -48,7 +48,7 @@ createProcedure:
 	pop ax ; code container HNDL
 	call getRawContainer
 
-	mov dword[edi+0x20], 0x3000 ; PDHNDL->EIP
+	mov dword[edi+0x20], 0x40000000 ; PDHNDL->EIP
 	mov dword[edi+0x24], 0x202 ; PDHNDL->EFLAGS
 
 	inc dword[0x608]
@@ -70,13 +70,16 @@ createProcedure:
 	mov byte[edi+0x52], al ; PDHNDL->N#
 	mov dword[edi+0x54], eax ; PDHNDL->ALLOC#
 	mov dword[edi+0x58], eax ; PDHNDL->ALLOCADDR
+	mov dword[edi+0x60], 0x5001 ; Kernel
 
 	; Set up PDPT
 	movzx ecx, cx
 	mov edx, dword[ecx*8+0x1fffc]
 	and dx, 0xf000
+	or dx, 0x0001
 	add dx, 0x1000
-	mov dword[edi+0x60], edx
+	mov dword[edi+0x68], edx
+	mov dword[edi+0x78], 0x6001
 
 	mov dx, cx ; Save PDHNDL to dx
 
@@ -117,12 +120,12 @@ createProcedure_noClamp:
 	ret
 
 registerProcedure:
-	mov esi, 0xc000
+	mov esi, 0x10000
 	mov bx, ax
 registerProcedure_loop:
 	lodsw
 
-	cmp esi, 0x100000
+	cmp esi, 0x20000
 	jae registerProcedure_error
 
 	test ax, ax

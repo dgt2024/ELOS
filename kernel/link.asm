@@ -95,7 +95,7 @@ mapContainer_kernelMap:
 	test cl, 0x02
 	jnz mapContainer_writeMap
 	or bl, 0x02 ; r/w bit
-mapContainer_writeMap
+mapContainer_writeMap:
 
 	test cl, 0x04
 	jnz mapContainer_codeMap
@@ -146,6 +146,7 @@ mapContainer_newPT:
 
 	pop edi ; save PD
 
+	or dx, 0x0001
 	mov dword[edi-8], edx ; Store page table in PD
 	mov ebp, edx
 

@@ -10,72 +10,26 @@ start:
 	mov ss, ax
 	mov sp, 0x7c00
 	int 0x10
-	
+
 	; Get kernel from disk
 	mov ax, 0x0202
 	mov bx, 0x7e00
 	mov cx, 0x0002
 	mov dh, 0
 	int 0x13
-	
+
+	; Get kernelproc from disk
+	mov ax, 0x0201
+	mov bx, 0x9000
+	mov cx, 0x0004
+	mov dh, 0
+	int 0x13
+
 	; Store TSC clock to logging stats
 	rdtsc
 	mov dword[0x600], eax
 	mov dword[0x604], ecx
-	
-	; Search for 1280x1024x32bpp
-	mov ax, 0x4f00
-	mov di, 0x1000
-	mov dword[di], "2EBV"
-	push es
-	int 0x10
-	pop es
-	
-	cmp ax, 0x004f
-	jne videoError
-	cmp dword[0x1000], "VESA"
-	jne videoError
-	
-	; Get mode array to iterate
-	mov si, word[0x100e]
-	mov ax, word[0x1010]
-	mov ds, ax
-	
-videoSearch:
-	lodsw
-	cmp ax, 0xffff
-	je videoError
-	
-	; Find VBE mode resolution
-	mov cx, ax
-	mov ax, 0x4f01
-	mov di, 0x1200
-	push si
-	push es
-	int 0x10
-	pop es
-	pop si
-	
-	; Check whether mode was found
-	cmp byte[0x1219], 32
-	jne videoSearch
-	
-	cmp word[0x1212], 1280
-	jne videoSearch
-	
-	cmp word[0x1214], 1024
-	jne videoSearch
-	
-	; Find framebuffer pointer
-	mov eax, dword[0x1228]
-	mov dword[0x608], eax
-	
-	; Set mode
-	mov bx, word[si-2]
-	or bx, 0x4000
-	mov ax, 0x4f02
-	int 0x10
-	
+
 	; Read RAM block array
 	xor ebx, ebx
 	mov ax, 0x6000
@@ -88,19 +42,19 @@ bootRamFind:
 	mov ecx, 24
 	mov edx, 0x534D4150
 	int 0x15
-	
+
 	cmp eax, 0x534D4150
 	jne bootRamFind
-	
+
 	test ebx, ebx ; Item 0
 	jz bootRamFind_end
-	
+
 	cmp dword[es:di+0x4], 0 ; offset ram.size
 	jne bootRamFind
-	
+
 	cmp dword[es:di+0x10], 1 ; offset ram.type (1=usable)
 	jne bootRamFind
-	
+
 	; Limit to non-kernel areas
 	cmp dword[es:di], 0xa0000
 	jb bootRamFind
@@ -109,14 +63,14 @@ bootRamFind:
 	inc byte[0x60c]
 	jmp bootRamFind
 bootRamFind_end:
-	
+
 	; Switch to 32-bit mode
 	lgdt [gdtTable]
 	mov eax, cr0
 	or eax, 0x1
 	mov cr0, eax
 	jmp 0x08:protectedMain
-	
+
 videoError:
 	cli
 	hlt
@@ -139,7 +93,7 @@ protectedMain:
 	mov gs, ax
 	mov ss, ax
 	mov esp, 0x7c00
-	
+
 	mov edi, 0x5000
 	mov ecx, 0x800
 	xor eax, eax
@@ -150,10 +104,10 @@ protectedMain:
 	mov dword[0x5f8], 0x6001
 	mov dword[0x5000], 0x83
 	mov dword[0x5008], 0x4003
-	
+
 	; Initialize VRAM data pages
 	mov edi, 0x6c00
-	
+
 	; Get VRAM size in megabytes
 	; EBX=width,ECX=height
 	mov	ebx, 1280
@@ -161,7 +115,7 @@ protectedMain:
 	imul ecx, ebx
 	shr ecx, 22
 	inc ecx
-	
+
 	; Get VRAM pointer
 	mov eax, dword[0x1228]
 	and eax, 0xffdf0000
@@ -172,11 +126,11 @@ pageCreateVRAM:
 	add edi, 4
 	add eax, 0x200000
 	loop pageCreateVRAM
-	
+
 	; Set up page directory
 	mov eax, 0x5e0
 	mov cr3, eax
-	
+
 	; Set CR4.PSE for larger pages and CR4.PAE
 	mov eax, cr4
 	or eax, 0x00000030
@@ -190,7 +144,7 @@ pageCreateVRAM:
 	call initializeMemory
 
 	; Start PID=0
-	mov edi, 0x8000
+	mov edi, 0x9000
 	mov ax, 0x0014
 	mov bx, 0x0000
 	call registerContainer ; CODE DATA
@@ -199,9 +153,32 @@ pageCreateVRAM:
 	mov ecx, kprocName_end-kprocName
 	mov esi, kprocName
 	call createProcedure
-	
-	cli
-	hlt
+
+	; Run procedures
+runProcedure:
+	mov ecx, 0x4000
+	mov esi, 0x10000
+
+runProcedure_loop:
+	xor eax, eax
+
+	repe scasd
+
+	call getRawContainer
+
+	push edx
+	or dx, 0x0003
+	mov dword[0x4000], edx
+	pop edx
+
+	invlpg[0x200000]
+
+	or dx, 0x60
+	mov cr3, edx
+
+	jmp dword[0x200020]
+	loop runProcedure_loop
+	jmp runProcedure
 kprocName:
 	db "kernelproc"
 kprocName_end:
@@ -212,3 +189,6 @@ times 510 - ($ - $$) db 0
 %include "kernel/procedure.asm"
 %include "kernel/link.asm"
 times 512 * 3 - ($ - $$) db 0
+	cli
+	hlt
+times 512 * 4 - ($ - $$) db 0

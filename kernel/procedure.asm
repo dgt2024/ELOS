@@ -50,7 +50,7 @@ createProcedure:
 
 	mov dword[edi+0xc], 0x40001000 ; PDHNDL->ESP
 	mov dword[edi+0x20], 0x40001000 ; PDHNDL->EIP
-	mov dword[edi+0x24], 0x202 ; PDHNDL->EFLAGS
+	mov dword[edi+0x24], 0x1202 ; PDHNDL->EFLAGS
 
 	inc dword[0x608]
 	mov eax, dword[0x608]
@@ -60,7 +60,7 @@ createProcedure:
 
 	pop bx ; Load flags
 	mov byte[edi+0x30], bl ; PDHNDL->FLAGS (low byte)
-	mov byte[edi+0x31], 0x80
+	mov byte[edi+0x31], 0
 
 	xor eax, eax
 	mov dword[edi+0x34], eax ; PDHNDL->SENT#|SYSC#
@@ -128,7 +128,7 @@ createProcedure_noClamp:
 	mov al, 0 ; stack size in pages
 	call pageAllocate
 	mov edi, edx
-	mov ax, 0x0003
+	mov ax, 0x00031
 	mov ebx, dword[esp+4] ; RDHNDL
 	call registerContainer
 	mov ax, dx

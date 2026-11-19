@@ -95,7 +95,7 @@ mapContainer_afterNewPT:
 mapContainer_kernelMap:
 	
 	test cl, 0x02
-	jnz mapContainer_writeMap
+	jz mapContainer_writeMap
 	or bl, 0x02 ; r/w bit
 mapContainer_writeMap:
 

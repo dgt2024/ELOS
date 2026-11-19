@@ -21,11 +21,31 @@ startScheduler_loop:
 	add dx, 0x60
 	mov cr3, edx ; Set CR3
 
-	mov esp, dword[0x200020]
+	; Set up stack call (iretd at 0x580)
+	mov eax, dword[0x20000c]
+	mov dword[0x57c], eax ; ESP
+	mov eax, dword[0x200020]
+	mov dword[0x570], eax ; EIP
+	mov eax, dword[0x200024]
+	mov dword[0x578], eax ; EFLAGS
+
+	mov word[0x580], 0x33
+	mov word[0x574], 0x2b
+
+	test byte[0x200030], 0x80
+	jz startScheduler_ring1
+
+	mov word[0x580], 0x21
+	mov word[0x574], 0x19
+
+startScheduler_ring1:
+
+	mov esp, 0x200020
 	popad
 
-	mov esp, dword[0x20000c]
+	mov esp, 0x570
+	iretd
 
-	jmp dword[0x200020]
-	loop startScheduler_loop
-	jmp startScheduler
+	test ecx, ecx
+	jz startScheduler
+	jmp startScheduler_loop

@@ -184,5 +184,5 @@ times 510 - ($ - $$) db 0
 %include "kernel/scheduler.asm"
 times 512 * 4 - ($ - $$) db 0
 	cli
-	hlt
+	jmp $
 times 512 * 5 - ($ - $$) db 0

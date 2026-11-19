@@ -51,5 +51,5 @@ SR	SW	SC	SO	SPR	SPW	SPC	SPO
 BF -> DR7, 64B means not present
 FL
 0		1		2		3		4		5		6		7		8
-Prvldge	Status	Role	Fatal	ObjPvge	Crtion	Static	Share
-BP0E	BP1E	BP2E	BP3E	I/O block(IOBP) RFU		Present
+Prvldge	Status	Role	Fatal	Crtion	Static	ObjPvge Share
+BP0E	BP1E	BP2E	BP3E	Reserved

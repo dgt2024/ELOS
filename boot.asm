@@ -82,6 +82,9 @@ gdtDescriptorTable:
 	dq 0
 	dq 0x00cf9a000000ffff
 	dq 0x00cf92000000ffff
+	dq 0x00cffa000000ffff
+	dq 0x00cff2000000ffff
+	dq 0x00c4e00005000001
 gdtDescriptorTable_end:
 
 use32
@@ -173,8 +176,14 @@ runProcedure_loop:
 
 	invlpg[0x200000]
 
-	or dx, 0x60
-	mov cr3, edx
+	add dx, 0x60
+	mov cr3, edx ; Set CR3
+
+	cli
+	hlt
+
+	mov esp, dword[0x40000020]
+	popad
 
 	jmp dword[0x200020]
 	loop runProcedure_loop

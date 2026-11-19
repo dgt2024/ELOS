@@ -48,7 +48,8 @@ createProcedure:
 	pop ax ; code container HNDL
 	call getRawContainer
 
-	mov dword[edi+0x20], 0x40000000 ; PDHNDL->EIP
+	mov dword[edi+0x20], 0x40001000 ; PDHNDL->EIP
+	mov dword[edi+0x2c], 0x40001000
 	mov dword[edi+0x24], 0x202 ; PDHNDL->EFLAGS
 
 	inc dword[0x608]
@@ -111,8 +112,27 @@ createProcedure_noClamp:
 	; Change owner of HNDL to PDHNDL
 	mov word[eax*8+0x1fffa], dx
 
-	mov bx, dx
+	push edx ; PDHNDL
+	push eax
+
+	mov al, 0 ; stack size in pages
+	call pageAllocate
+	mov edi, edx
+	mov ax, 0x0003
+	mov ebx, dword[esp] ; RDHNDL
+	call registerContainer
+	mov ax, dx
+	mov ebx, dword[esp]
 	push ax
+	call giveContainer
+	pop ax
+	call mapContainer
+
+	pop eax
+	pop edx
+
+	mov bx, dx
+	push ax ; HNDL
 	call giveContainer
 	pop ax
 	call mapContainer

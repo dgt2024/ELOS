@@ -43,7 +43,7 @@ mapContainer:
 	mov dword[0x4000], ebp
 
 	push ebp
-	add ebp, 0x1000
+	add ebp, 0x1000 ; CR3
 	mov dword[0x4008], ebp
 	pop ebp
 

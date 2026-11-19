@@ -9,30 +9,39 @@ DWORD[]		0x5000		PD
 DWORD[]		0x6000		PT <1MB ident.
 STRUCT[]	0x20000		Container array
 
-TODO:
- - Get drive parameters (currently hardcoded to native primary master ATA)
- - Make Disk driver an LCF module
-
-Global Functions: NOTE: Functions with 'S' return status on carry flag
+Global Functions:
 kernel/memory.asm
- - initializeMemory -> NO INPUT -> NO OUTPUT
-S- kernelPageAllocate -> AL=SIZE -> EDX=ADDR
+ - initializeMemory -> NO INPUT -> NO OUTPUT : NO STATUS
+ - kernelPageAllocate -> AL=SIZE -> EDX=ADDR
 kernel/container.asm
-S- registerContainer -> EDI=PTR,AX=FLAGS,BX=HNDL -> DX=HNDL
-S- getRawContainer -> AX=HANDLE -> EDX=PTR
+ - registerContainer -> EDI=PTR,AX=FLAGS,BX=HNDL -> DX=HNDL
+ - getRawContainer -> AX=HANDLE -> EDX=PTR
 kernel/procedure.asm
-S- createProcedure -> ESI=NAME,AX=CODE HNDL,BL=FLAGS -> DX=PDHNDL
+ - createProcedure -> ESI=NAME,AX=CODE HNDL,BL=FLAGS -> DX=PDHNDL
+ - registerProcedure -> AX=HNDL -> NO OUTPUT
 kernel/link.asm
-S- giveContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
+ - giveContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
+ - mapContainer -> AX=HNDL,BC=PDHNDL -> NO OUTPUT
+kernel/scheduler.asm
+ - startScheduler -> NO INPUT -> NO OUTPUT : INFINITE
+
+**HNDL structure**:
 
 0     1     2     3     4     5     6     7     8
 FLAGS       HNDL        ADDRESS        SZ LINK#
 
 FLAGS
 0	1	2	3	4	5	6	7	8
-R	W	C	COW	FPE	PDE	SPE	SE
+R	W	C	COW	SPC	PDE	SPE	SE
 SR	SW	SC	SO	SPR	SPW	SPC	SPO
 
+SPC->Special container
+SPC=0,PDE=0 MDHNDL (Miscelaneous Data HaNDLe)
+SPC=0,PDE=1 UDHNDL (UnDefined HaNDLe)
+SPC=1,PDE=0 DDHNDL (Driver Data HaNDLe)
+SPC=1,PDE=1 PDHNDL (Program Data HaNDLe)
+
+**PDHNDL structure**:
 	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  10
 00	EDI         ESI         EBP         ESP
 01	EBX         EDX         ECX         EAX
@@ -53,3 +62,8 @@ FL
 0		1		2		3		4		5		6		7		8
 Prvldge	Status	Role	Fatal	Crtion	Static	ObjPvge Share
 BP0E	BP1E	BP2E	BP3E	Reserved
+
+**DDHNDL call structure**
+ESI=INPUT
+EDI=OUTPUT
+BX=MISC_FLAGS

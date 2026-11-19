@@ -10,7 +10,7 @@ createProcedure:
 	call pageAllocate
 	mov edi, edx
 	or di, 0x100
-	mov ax, 0x0020
+	mov ax, 0x0030
 	mov bx, 0x0000
 	call registerContainer
 
@@ -96,7 +96,7 @@ createProcedure:
 
 	pop esi
 	pop ecx
-	add edi, 0x80
+	add edi, 0x80 ; process name
 
 	cmp ecx, 0x80
 	jbe createProcedure_noClamp

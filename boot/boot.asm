@@ -1,5 +1,3 @@
-section .boot vstart=0x7c00
-use16
 start:
 	cli
 	cld
@@ -75,38 +73,4 @@ bootRamFind_end:
 	mov eax, cr0
 	or eax, 0x1
 	mov cr0, eax
-	jmp 0x08:protectedMain
-
-gdtTable:
-	dw gdtDescriptorTable_end - gdtDescriptorTable - 1
-	dd gdtDescriptorTable
-gdtDescriptorTable:
-	dq 0
-	dq 0x00cf9a000000ffff
-	dq 0x00cf92000000ffff
-	dq 0x00cfba000000ffff
-	dq 0x00cfb2000000ffff
-	dq 0x00cffa000000ffff
-	dq 0x00cff2000000ffff
-	dq 0x3f4089fff5001b00
-gdtDescriptorTable_end:
-fileDescriptorTable:
-	; kernel:
-	dw 0x07e0
-	db 0x03
-	; kernelproc:
-	dw 0x0900
-	db 0x01
-fileDescriptorTable_end:
-%include "kernel/kernel.asm"
-times 510 - ($ - $$) db 0
-	dw 0xaa55
-%include "kernel/memory.asm"
-%include "kernel/container.asm"
-%include "kernel/procedure.asm"
-%include "kernel/link.asm"
-%include "kernel/scheduler.asm"
-times 512 * 4 - ($ - $$) db 0
-	cli
-	jmp $
-times 512 * 5 - ($ - $$) db 0
+	jmp 0x08:main

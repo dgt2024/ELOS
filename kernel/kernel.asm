@@ -1,5 +1,4 @@
-use32
-protectedMain:
+main:
 	mov ax, 0x10
 	mov ds, ax
 	mov es, ax
@@ -58,6 +57,8 @@ protectedMain:
 	mov ecx, kprocName_end-kprocName
 	mov esi, kprocName
 	call createProcedure
+
+	call initializeDrivers
 
 	mov ax, 0x38
 	ltr ax

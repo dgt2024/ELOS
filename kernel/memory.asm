@@ -94,9 +94,4 @@ initializeMemory_bitloop:
 	
 	pop ecx
 	loop initializeMemory_loop
-	
-	mov ecx, 0x80000
-	mov edi, 0x20000
-	mov al, 0
-	rep stosb
 	ret

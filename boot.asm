@@ -12,18 +12,24 @@ start:
 	int 0x10
 
 	; Get kernel from disk
-	mov ax, 0x0203
-	mov bx, 0x7e00
+	xor bx, bx
 	mov cx, 0x0002
 	mov dh, 0
+	mov si, fileDescriptorTable
+	mov bp, fileDescriptorTable_end
+
+fileDescriptorRead:
+	mov ax, word[si]
+	mov es, ax ; segment
+
+	mov al, byte[si+2] ; size
+	mov ah, 0x02
 	int 0x13
 
-	; Get kernelproc from disk
-	mov ax, 0x0201
-	mov bx, 0x9000
-	mov cx, 0x0005
-	mov dh, 0
-	int 0x13
+	add si, 3
+	add cl, al ; next
+	cmp si, bp
+	jb fileDescriptorRead
 
 	; Store TSC clock to logging stats
 	rdtsc
@@ -71,10 +77,6 @@ bootRamFind_end:
 	mov cr0, eax
 	jmp 0x08:protectedMain
 
-videoError:
-	cli
-	hlt
-
 gdtTable:
 	dw gdtDescriptorTable_end - gdtDescriptorTable - 1
 	dd gdtDescriptorTable
@@ -88,93 +90,15 @@ gdtDescriptorTable:
 	dq 0x00cff2000000ffff
 	dq 0x3f4089fff5001b00
 gdtDescriptorTable_end:
-
-use32
-protectedMain:
-	mov ax, 0x10
-	mov ds, ax
-	mov es, ax
-	mov fs, ax
-	mov gs, ax
-	mov ss, ax
-	mov esp, 0x7c00
-
-	mov edi, 0x5000
-	mov ecx, 0x800
-	xor eax, eax
-	rep stosd
-
-	mov dword[0x608], 0 ; TID
-
-	; Initialize kernel data pages
-	mov dword[0x5e0], 0x5001
-	mov dword[0x5f8], 0x6001
-	mov dword[0x5000], 0x83
-	mov dword[0x5008], 0x4003
-	mov dword[0x5ff8], 0x3003
-	; TSS setup
-	mov dword[0x504], 0x7b00
-	mov word[0x508], 0x10
-	mov word[0x560], 0x1300
-	mov dword[0x3ff8], 0x0003
-
-	; Initialize VRAM data pages
-	mov edi, 0x6c00
-
-	; Get VRAM size in megabytes
-	; EBX=width,ECX=height
-	mov	ebx, 1280
-	mov ecx, 1024
-	imul ecx, ebx
-	shr ecx, 22
-	inc ecx
-
-	; Get VRAM pointer
-	mov eax, dword[0x1228]
-	and eax, 0xffdf0000
-	mov al, 0x38
-
-pageCreateVRAM:
-	stosd
-	add edi, 4
-	add eax, 0x200000
-	loop pageCreateVRAM
-
-	; Set up page directory
-	mov eax, 0x5e0
-	mov cr3, eax
-
-	; Set CR4.PSE for larger pages and CR4.PAE
-	mov eax, cr4
-	or eax, 0x00000030
-	mov cr4, eax
-	
-	; Start paging
-	mov eax, cr0
-	or eax, 0x80000000
-	mov cr0, eax
-
-	call initializeMemory
-
-	; Start PID=0
-	mov edi, 0x9000
-	mov ax, 0x0014
-	mov bx, 0x0000
-	call registerContainer ; CODE DATA
-	mov ax, dx
-	mov bl, 0xdf
-	mov ecx, kprocName_end-kprocName
-	mov esi, kprocName
-	call createProcedure
-
-	mov ax, 0x38
-	ltr ax
-
-	; Run procedures
-	jmp startScheduler
-kprocName:
-	db "kernelproc"
-kprocName_end:
+fileDescriptorTable:
+	; kernel:
+	dw 0x07e0
+	db 0x03
+	; kernelproc:
+	dw 0x0900
+	db 0x01
+fileDescriptorTable_end:
+%include "kernel/kernel.asm"
 times 510 - ($ - $$) db 0
 	dw 0xaa55
 %include "kernel/memory.asm"

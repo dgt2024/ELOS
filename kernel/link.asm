@@ -27,6 +27,7 @@ giveContainer:
 	jne giveContainer_error
 
 	mov word[edi-2], dx
+	inc byte[edx*8+0x1fffc] ; Increments HNDL->LINK#
 
 	clc
 	ret

@@ -17,6 +17,3 @@ section .kernelproc vstart=0x9000
 	cli
 	jmp $
 times 512 - ($ - $$) db 0
-section .driver_ata vstart=0xa000
-%include "driver/ata.asm"
-times 512 - ($ - $$) db 0

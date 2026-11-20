@@ -24,6 +24,8 @@ kernel/link.asm
  - mapContainer -> AX=HNDL,BC=PDHNDL -> NO OUTPUT
 kernel/scheduler.asm
  - startScheduler -> NO INPUT -> NO OUTPUT : INFINITE
+kernel/driver.asm
+ - initializeDrivers -> NO INPUT -> NO OUTPUT : NO STATUS
 
 **HNDL structure**:
 
@@ -66,4 +68,5 @@ BP0E	BP1E	BP2E	BP3E	Reserved
 **DDHNDL call structure**
 ESI=INPUT
 EDI=OUTPUT
-BX=MISC_FLAGS
+BH=FUNC#
+BL=MISC

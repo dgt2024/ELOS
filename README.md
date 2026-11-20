@@ -1,4 +1,7 @@
-# Memory Map
+# Stylized [Architecture](docs/arch.txt)
+
+## Memory Map
+
 | Type | Address | Description | Notes
 | ---- | ------- | ----------- | -----
 | `STRUCT`| `0x500` | TSS
@@ -13,7 +16,8 @@
 | `STRUCT[]` | `0x20000` | Container array
 
 
-# Global Functions:
+## Global Functions:
+
 | Function Name | Input | Output | Notes |
 | ------------- | ----- | ------ | ----- |
 | [`initializeMemory`](kernel/memory.asm) |  |  | No status
@@ -27,10 +31,10 @@
 | [`startScheduler`](kernel/scheduler.asm) |  |  | Infinite
 | [`initializeDriver`](driver/driver.asm) |  |  | No status
 
-**Note**: These functions are in order of creation, not in call order
+**Note**: These functions are in order of file creation, not in call order
 
-# Structures
-## HNDL:
+## Structures
+### HNDL:
 
 <table>
 	<tr>
@@ -56,7 +60,7 @@
 	</tr>
 </table>
 
-### Flags:
+#### Flags:
 
 <table>
 	<tr>
@@ -76,7 +80,7 @@
 | 0 |  | MDHNDL (Miscelaneous Data HaNDLe) | UDHNDL (UnDefined HaNDLe)
 | 1 |  | DDHNDL (Driver Data HaNDLe) | PDHNDL (Program Data HaNDLe) |
 
-## PDHNDL structure:
+### PDHNDL structure:
 
 <table>
 	<tr>
@@ -165,7 +169,7 @@
 | `0x600` | `0x7ff` | Priviledged Share Containers HNDL Array |
 | `0x800` | `0xfff` | I/O Bitmap Ports `0x0000` through `0x4000` |
 
-### Symbols
+#### Symbols
 
 | Symbol | Meaning |
 | ------ | ------- |
@@ -186,7 +190,7 @@
 | `ALLOCADDR` | Last Address `malloc`'d |
 | `LASTSENT` | Last Notification Sent |
 
-### Flags
+#### Flags
 
 <table>
 	<tr>
@@ -221,7 +225,7 @@
 	</tr>
 </table>
 
-# DDHNDL call structure:
+## DDHNDL call structure:
 
 | Register | Description |
 | -------- | ----------- |
@@ -229,12 +233,3 @@
 | `EDI` | Output |
 | `BH` | Function Number |
 | `BL` | Subfunction or data (subsystem dependant) |
-
-## Disk Messages:
-
-| Function # | Subfunction #/Data | Description |
-| ---------- | ------------------ | ----------- |
-| `0x00` | Size in sectors | Read from filename
-| `0x01` | Size in sectors | Write to filename
-| `0x02` | Size in sectors | Read from sector number
-| `0x03` | Size in sectors | Write to sector number

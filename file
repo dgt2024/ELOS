@@ -1,0 +1,33 @@
+05432e1 Add driver initialization
+3df2754 Fix kernelproc
+515939c Deleted undefined information
+33f5a00 Update README
+8f4ae1f Styling arch.md
+b8072ae Add driver modules
+7b9cccb Cleanup and mbootloader file descriptors
+5a6bd3a Add priviledges
+82257d9 Track untracked scheduler.asm
+8aeabe5 Add TSS and ring 1
+11d19ec Add stack init
+9c5bb65 Add scheduler
+f6421f3 Add PAE
+7c24877 Add mapContainer
+858ba97 Add giveContainer linking
+4a9bea7 Add procedure initialization
+5b27ded Improved architecture
+0b1c401 Start adding KPROC
+ee21d46 Remove unreferenced files
+3e87500 Clean-up code again
+a9a3234 Improved readability again
+0ea537c Add boot.asm as tracked
+4226c20 Improved readability
+b9cee0a Add documentation
+aaf35d8 Add malloc
+88198fa Add .gitignore and container
+0e380f6 Fix video and assembly bu
+b203faf Add build.sh
+1ae9214 Add kernel folder
+5bb9d96 Add Memory Module
+eb86570 Add KABM initialize
+b7e4431 Bootloader
+85a9779 First Commit

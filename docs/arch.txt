@@ -65,8 +65,16 @@ FL
 Prvldge	Status	Role	Fatal	Crtion	Static	ObjPvge Share
 BP0E	BP1E	BP2E	BP3E	Reserved
 
-**DDHNDL call structure**
-ESI=INPUT
-EDI=OUTPUT
-BH=FUNC#
-BL=MISC
+**DDHNDL structure**:
+
+All functions receive a pointer and size as arguments
+0x00: init()= initializes device
+0x04: open()= starts device
+0x08: read()= gets data from device
+0x0c: send()= sends queued data to device
+0x10: end()= ends device
+0x14: close()= closes device
+0x18: write()= writes data to device
+0x1c: control()= controls device, functionality depends on device
+
+Driver initialization must ocurr right after 0x80000020 (offset=0x20)

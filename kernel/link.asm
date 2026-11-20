@@ -94,7 +94,7 @@ mapContainer_afterNewPT:
 	jz mapContainer_kernelMap
 	or bl, 0x04 ; supervisor
 mapContainer_kernelMap:
-	
+		
 	test cl, 0x02
 	jz mapContainer_writeMap
 	or bl, 0x02 ; r/w bit
@@ -104,7 +104,7 @@ mapContainer_writeMap:
 	jnz mapContainer_codeMap
 	or eax, 0x80000000
 mapContainer_codeMap:
-	
+
 	push eax ; save high 64-bit
 	; Find empty PTE
 	mov edi, 0x200000

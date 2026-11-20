@@ -1,3 +1,8 @@
+kernelProcMain:
+	call initializeDrivers
+	cli
+	jmp $
+
 initializeDrivers:
 	mov esi, fileDescriptorTable_driver ; start
 	mov ebp, fileDescriptorTable_end ; end

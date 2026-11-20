@@ -48,7 +48,7 @@ createProcedure:
 	pop ax ; code container HNDL
 	call getRawContainer
 
-	mov dword[edi+0xc], 0x40001000 ; PDHNDL->ESP
+	mov dword[edi+0xc], 0x40000ffc ; PDHNDL->ESP
 	mov dword[edi+0x20], 0x40001000 ; PDHNDL->EIP
 	mov dword[edi+0x24], 0x1202 ; PDHNDL->EFLAGS
 
@@ -128,7 +128,7 @@ createProcedure_noClamp:
 	mov al, 0 ; stack size in pages
 	call pageAllocate
 	mov edi, edx
-	mov ax, 0x00031
+	mov ax, 0x0003
 	mov ebx, dword[esp+4] ; RDHNDL
 	call registerContainer
 	mov ax, dx

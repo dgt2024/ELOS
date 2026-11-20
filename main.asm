@@ -11,9 +11,7 @@ times 510 - ($ - $$) db 0
 %include "kernel/procedure.asm"
 %include "kernel/link.asm"
 %include "kernel/scheduler.asm"
-%include "driver/driver.asm"
 times 512 * 4 - ($ - $$) db 0
-section .kernelproc vstart=0x9000
-	cli
-	jmp $
+section .kernelproc vstart=0x40001000
+%include "driver/driver.asm"
 times 512 - ($ - $$) db 0

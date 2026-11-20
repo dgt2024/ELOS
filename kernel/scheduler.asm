@@ -29,16 +29,23 @@ startScheduler_loop:
 	mov eax, dword[0x200024]
 	mov dword[0x578], eax ; EFLAGS
 
+	mov ax, 0x332
 	mov word[0x580], 0x33
 	mov word[0x574], 0x2b
 
 	test byte[0x200030], 0x80
 	jz startScheduler_ring1
 
+	mov ax, 0x21
 	mov word[0x580], 0x21
 	mov word[0x574], 0x19
 
 startScheduler_ring1:
+	
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
 
 	mov esp, 0x200020
 	popad

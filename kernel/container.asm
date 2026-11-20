@@ -15,7 +15,6 @@ registerContainer_iterate:
 	
 	test ax, ax
 	jne registerContainer_iterate
-	
 	; Write to container
 	mov word[esi-0x08], cx
 	mov word[esi-0x06], bx

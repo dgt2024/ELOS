@@ -58,11 +58,14 @@ main:
 	mov esi, kprocName
 	call createProcedure
 
-	call initializeDrivers
-
 	mov ax, 0x38
 	ltr ax
 
+	mov ecx, 0xc0000080 ; IA32_EFER
+	rdmsr
+	or ax, 0x800
+	wrmsr
+	
 	; Run procedures
 	jmp startScheduler
 kprocName:

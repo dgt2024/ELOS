@@ -49,12 +49,14 @@ kernelProcMain:
 
 	call 0x80000020
 
+	; change color to white on black
 	mov cl, 0x0f
 	mov ax, 0
 	mov dh, 10
 	mov bl, 7
 	int 0x30
 
+	; print string
 	mov edi, str
 	mov ecx, str_end-str
 	mov ax, 0

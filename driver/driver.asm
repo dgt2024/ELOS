@@ -21,3 +21,25 @@ registerDriver:
 registerDriver_error:
 	stc
 	ret
+
+runDriver:
+	movzx edx, bl
+	movzx eax, al
+	and bl, 0x7
+
+	call mapDriver
+	jc runDriver_null
+
+	mov eax, dword[0x80000000+ebx*4]
+	test eax, eax
+
+	jz runDriver_null
+
+	call eax
+
+	clc
+	ret
+
+runDriver_null:
+	stc
+	ret

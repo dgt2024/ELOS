@@ -27,10 +27,13 @@ kernel/procedure.asm
 kernel/link.asm
  - giveContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
  - mapContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
+ - mapPageX -> AX=HNDL -> NO OUTPUT : NO STATUS
+ - mapDriver -> AH=DDHNDL -> NO OUTPUT : NO STATUS
 kernel/scheduler.asm
  - startScheduler -> NO INPUT -> NO OUTPUT : INFINITE
 driver/driver.asm
  - registerDriver -> EAX=ADDR -> DX=DDHNDL
+ - runDriver -> DL=SUBFUNC,AX=DDHNDL
 
 **HNDL structure**:
 

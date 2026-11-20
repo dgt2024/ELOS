@@ -13,11 +13,11 @@ kernelProcMain:
 
 	mov eax, dword[esp]
 
-	mov dh, 11
+	mov dh, 12
 	int 0x30
 
 	mov eax, 0xa000
-	mov dh, 10
+	mov dh, 11
 	int 0x30
 
 	mov esi, 0x3ff000
@@ -28,7 +28,7 @@ kernelProcMain:
 	mov eax, dword[esp]
 	add eax, 0x1000 ; page directory
 
-	mov dh, 10
+	mov dh, 11
 	int 0x30
 
 	mov eax, dword[esp]
@@ -36,18 +36,35 @@ kernelProcMain:
 	or ax, 0x0001
 	mov dword[0x3ff000], eax
 
-	mov dh, 10
+	mov dh, 11
 	int 0x30
 
 	mov eax, dword[esp]
 	or ax, 0x0003 ; code (R/W)
 	mov dword[0x3ff000], eax
 
-	add eax, 0x1000 ; Page Directory
+	mov ax, 0
 	mov dh, 9
 	int 0x30
 
 	call 0x80000020
-	
+
+	mov cl, 0x0f
+	mov ax, 0
+	mov dh, 10
+	mov bl, 7
+	int 0x30
+
+	mov edi, str
+	mov ecx, str_end-str
+	mov ax, 0
+	mov dh, 10
+	mov bl, 6
+	int 0x30
+
 	cli
 	jmp $
+
+str:
+	db "Hello, World!"
+str_end:

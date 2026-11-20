@@ -18,6 +18,7 @@ kernelDriver_lookup:
 	dd mapContainer
 	dd registerDriver
 	dd mapDriver
+	dd runDriver
 	; dh=10
 	dd mapPage1
 	dd mapPage2

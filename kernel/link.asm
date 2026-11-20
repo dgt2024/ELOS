@@ -175,8 +175,22 @@ mapPage1:
 	ret
 
 mapDriver:
+	movzx eax, ax
+
+	; Calculate page directory address
+	mov eax, dword[0x180000+eax*4]
+	test eax, eax
+
+	jz mapDriver_error
+
+	add eax, 0x1000
 	and ax, 0xf000
 	or ax, 0x0001
-	mov dword[0x200070], eax
+
+	mov dword[0x200070], eax ; PDPT[3]
 	invlpg [0x80000000]
+	ret
+
+mapDriver_error:
+	stc
 	ret

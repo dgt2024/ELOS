@@ -1,3 +1,8 @@
+deleteContainer:
+	movzx eax, ax
+	mov word[eax*8+0x20000], 0
+	ret
+
 registerContainer:
 	; Find unused container
 	mov esi, 0x20000 ; offset container.flags

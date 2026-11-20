@@ -1,37 +1,23 @@
-kernelProcMain:
-	call initializeDrivers
-	cli
-	jmp $
+registerDriver:
+	push eax ; Store driver ptr
 
-initializeDrivers:
-	mov esi, fileDescriptorTable_driver ; start
-	mov ebp, fileDescriptorTable_end ; end
-	mov edi, 0xf000
+	mov edi, 0x180000
+	mov ecx, 0x10000
+	xor eax, eax
 
-initializeDrivers_loop:
-	push edi ; save driver ptr
-	movzx edi, word[esi]
-	shl edi, 4 ; segment
+	repne scasd
+	jnz registerDriver_error
 
-	mov al, 0
-	mov ah, byte[esi+2]
-	shr ah, 2 ; 512B sectors -> 4kB pages
-	and ah, 0x0f ; limit to 16 pages
-	or di, ax
+	pop eax
+	mov dword[edi-4], eax
 
-	mov ax, 0x0010 ; DDHNDL
-	mov bx, 0x0000 ; no one owns it, systemwide
+	not cx
+	add cx, 0x8000
+	mov dx, cx
 
-	push esi
-	call registerContainer
-	pop esi
-	pop edi
+	clc
+	ret
 
-	mov word[edi], dx
-
-	add edi, 2
-	add esi, 3
-
-	cmp esi, ebp
-	jb initializeDrivers_loop
+registerDriver_error:
+	stc
 	ret

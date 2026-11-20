@@ -12,19 +12,26 @@ main:
 	xor eax, eax
 	rep stosd
 
+	lidt [idtTable]
+
+	; driver syscall
+	mov dword[0x982], 0xae000008
+	mov word[0x980], kernelDriver
+
 	mov dword[0x608], 0 ; TID
 
 	; Initialize kernel data pages
-	mov dword[0x5e0], 0x5001
-	mov dword[0x5f8], 0x6001
-	mov dword[0x5000], 0x83
-	mov dword[0x5008], 0x4003
-	mov dword[0x5ff8], 0x3003
+	mov word[0x5e0], 0x5001
+	mov word[0x5f8], 0x6001
+	mov word[0x5000], 0x83
+	mov word[0x5008], 0x4003
+	mov word[0x5ff8], 0x3003
+
 	; TSS setup
-	mov dword[0x504], 0x7b00
+	mov word[0x504], 0x7b00
 	mov word[0x508], 0x10
 	mov word[0x560], 0x1300
-	mov dword[0x3ff8], 0x0003
+	mov word[0x3ff8], 0x0003
 
 	; Set up page directory
 	mov eax, 0x5e0
@@ -42,11 +49,6 @@ main:
 
 	call initializeMemory
 
-	mov ecx, 0x80000
-	mov edi, 0x20000
-	mov al, 0
-	rep stosb
-
 	; Start PID=0
 	mov edi, 0x9000
 	mov ax, 0x0014
@@ -61,6 +63,7 @@ main:
 	mov ax, 0x38
 	ltr ax
 
+	; enable NX bit
 	mov ecx, 0xc0000080 ; IA32_EFER
 	rdmsr
 	or ax, 0x800

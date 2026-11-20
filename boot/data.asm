@@ -11,6 +11,9 @@ gdtDescriptorTable:
 	dq 0x00cff2000000ffff
 	dq 0x3f4089fff5001b00
 gdtDescriptorTable_end:
+idtTable:
+	dw 0x7ff
+	dd 0x800
 fileDescriptorTable:
 	; kernel:
 	dw 0x07e0
@@ -18,8 +21,7 @@ fileDescriptorTable:
 	; kernelproc:
 	dw 0x0900
 	db 0x01
-fileDescriptorTable_driver:
-	; ata:
+	; common/out:
 	dw 0x0a00
 	db 0x01
 fileDescriptorTable_end:

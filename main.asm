@@ -11,7 +11,13 @@ times 510 - ($ - $$) db 0
 %include "kernel/procedure.asm"
 %include "kernel/link.asm"
 %include "kernel/scheduler.asm"
-times 512 * 4 - ($ - $$) db 0
-section .kernelproc vstart=0x40001000
 %include "driver/driver.asm"
+%include "driver/syscall.asm"
+%include "device/device.asm"
+times 512 * 4 - ($ - $$) db 0
+section .program vstart=0x40001000
+%include "device/proc.asm"
+times 512 - ($ - $$) db 0
+section .driver vstart=0x80000000
+%include "driver/common/out.asm"
 times 512 - ($ - $$) db 0

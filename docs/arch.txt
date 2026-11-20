@@ -3,29 +3,34 @@ Memory Map
 QWORD[]		0x5e0		PDPT
 QWORD		0x600		TSC start
 DWORD		0x608		LFB ptr					>> BEFORE initializeMemory();
-BYTE		0x60C		RAM block count			>> BEFORE initializeMemory();
+BYTE		0x60c		RAM block count			>> BEFORE initializeMemory();
 DWORD		0x608		TID
+QWORD[]		0x800		IDT
 DWORD[]		0x5000		PD
 DWORD[]		0x6000		PT <1MB ident.
 STRUCT[]	0x20000		Container array
+STRUCT[]	0x100000	Device array
+STRUCT[]	0x180000	Driver array
+STRUCT[]	0x1c0000	KABM
 
 Global Functions:
 kernel/memory.asm
  - initializeMemory -> NO INPUT -> NO OUTPUT : NO STATUS
- - kernelPageAllocate -> AL=SIZE -> EDX=ADDR
+ - pageAllocate -> AL=SIZE -> EDX=ADDR
 kernel/container.asm
  - registerContainer -> EDI=PTR,AX=FLAGS,BX=HNDL -> DX=HNDL
  - getRawContainer -> AX=HANDLE -> EDX=PTR
+ - deleteContainer -> AX=HANDLE -> NO OUTPUT
 kernel/procedure.asm
- - createProcedure -> ESI=NAME,AX=CODE HNDL,BL=FLAGS -> DX=PDHNDL
+ - createProcedure -> ESI=NAME,AX=CODE CMHNDL,BL=FLAGS -> DX=PDHNDL
  - registerProcedure -> AX=HNDL -> NO OUTPUT
 kernel/link.asm
  - giveContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
- - mapContainer -> AX=HNDL,BC=PDHNDL -> NO OUTPUT
+ - mapContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
 kernel/scheduler.asm
  - startScheduler -> NO INPUT -> NO OUTPUT : INFINITE
-kernel/driver.asm
- - initializeDrivers -> NO INPUT -> NO OUTPUT : NO STATUS
+driver/driver.asm
+ - registerDriver -> EAX=ADDR -> DX=DDHNDL
 
 **HNDL structure**:
 
@@ -40,8 +45,10 @@ SR	SW	SC	SO	SPR	SPW	SPC	SPO
 SPC->Special container
 SPC=0,PDE=0 MDHNDL (Miscelaneous Data HaNDLe)
 SPC=0,PDE=1 UDHNDL (UnDefined HaNDLe)
-SPC=1,PDE=0 DDHNDL (Driver Data HaNDLe)
+SPC=1,PDE=0 UDHNDL (UnDefined HaNDLe)
 SPC=1,PDE=1 PDHNDL (Program Data HaNDLe)
+
+Note: UDHNDLs seen as reserved
 
 **PDHNDL structure**:
 	0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F  10
@@ -72,9 +79,9 @@ All functions receive a pointer and size as arguments
 0x04: open()= starts device
 0x08: read()= gets data from device
 0x0c: send()= sends queued data to device
-0x10: end()= ends device
-0x14: close()= closes device
-0x18: write()= writes data to device
-0x1c: control()= controls device, functionality depends on device
+0x10: fnsh()= ends(finishes) device
+0x14: clos()= closes device
+0x18: writ()= writes data to device
+0x1c: ctrl()= controls device, functionality depends on device
 
 Driver initialization must ocurr right after 0x80000020 (offset=0x20)

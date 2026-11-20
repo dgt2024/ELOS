@@ -159,3 +159,24 @@ mapContainer_newPT:
 mapContainer_error:
 	stc
 	ret
+
+mapPage2:
+	and ax, 0xf000
+	or ax, 0x0003
+	mov dword[0x4ff0], eax
+	invlpg [0x3fe000]
+	ret
+
+mapPage1:
+	and ax, 0xf000
+	or ax, 0x0003
+	mov dword[0x4ff8], eax
+	invlpg [0x3ff000]
+	ret
+
+mapDriver:
+	and ax, 0xf000
+	or ax, 0x0001
+	mov dword[0x200070], eax
+	invlpg [0x80000000]
+	ret

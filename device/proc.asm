@@ -11,13 +11,15 @@ kernelProcMain:
 	mov dh, 8
 	int 0x30
 
+	mov ebp, edx
+
 	mov eax, dword[esp]
 
-	mov dh, 12
+	mov dh, 14
 	int 0x30
 
 	mov eax, 0xa000
-	mov dh, 11
+	mov dh, 13
 	int 0x30
 
 	mov esi, 0x3ff000
@@ -28,7 +30,7 @@ kernelProcMain:
 	mov eax, dword[esp]
 	add eax, 0x1000 ; page directory
 
-	mov dh, 11
+	mov dh, 13
 	int 0x30
 
 	mov eax, dword[esp]
@@ -36,7 +38,7 @@ kernelProcMain:
 	or ax, 0x0001
 	mov dword[0x3ff000], eax
 
-	mov dh, 11
+	mov dh, 13
 	int 0x30
 
 	mov eax, dword[esp]
@@ -47,20 +49,21 @@ kernelProcMain:
 	mov dh, 9
 	int 0x30
 
+	mov word[0x80000ffc], bp
 	call 0x80000020
 
 	; change color to white on black
 	mov cl, 0x0f
 	mov ax, 0
-	mov dh, 10
+	mov dh, 11
 	mov bl, 7
 	int 0x30
 
-	; print string
+	; print string2
 	mov edi, str
 	mov ecx, str_end-str
 	mov ax, 0
-	mov dh, 10
+	mov dh, 11
 	mov bl, 6
 	int 0x30
 

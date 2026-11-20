@@ -12,7 +12,6 @@ registerDriver:
 	mov dword[edi-4], eax
 
 	not cx
-	add cx, 0x8000
 	mov dx, cx
 
 	clc
@@ -23,7 +22,7 @@ registerDriver_error:
 	ret
 
 runDriver:
-	movzx edx, bl
+	movzx ebx, bl
 	movzx eax, al
 	and bl, 0x7
 

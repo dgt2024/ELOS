@@ -19,6 +19,8 @@ kernelDriver_lookup:
 	dd registerDriver
 	dd mapDriver
 	dd runDriver
-	; dh=10
+	dd runDevice
+	dd createDevice
+	; dh=12
 	dd mapPage1
 	dd mapPage2

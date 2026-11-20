@@ -11,6 +11,11 @@ times 0x20 - ($ - $$) db 0
 	mov dword[out_fdt+0x14], eax
 	mov dword[out_fdt+0x18], out_sendFunc
 	mov dword[out_fdt+0x1c], out_ctrlFunc
+
+	mov al, 0x00
+	mov ebx, "OUT "
+	mov dh, 12
+	int 0x30
 	ret
 
 out_sendFunc:

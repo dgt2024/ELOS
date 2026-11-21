@@ -52,7 +52,11 @@ createDevice_found:
 
 	mov byte[esi], dl
 	mov byte[esi+1], al
-	mov word[esi+2], cx
+	mov dx, word[0x80000ffc] ; DDHNDL of current driver
+	; Only drivers can create devices unless
+	; its a ring 1 device and you have driver loaded
+
+	mov word[esi+2], dx
 	mov dword[esi+4], ebx
 
 	mov dx, cx

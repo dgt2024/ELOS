@@ -14,6 +14,8 @@ registerDriver:
 	not cx
 	mov dx, cx
 
+	inc dx
+
 	clc
 	ret
 
@@ -23,7 +25,6 @@ registerDriver_error:
 
 runDriver:
 	movzx ebx, bl
-	movzx eax, al
 	and bl, 0x7
 
 	call mapDriver

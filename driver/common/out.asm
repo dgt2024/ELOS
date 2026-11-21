@@ -1,7 +1,7 @@
 ; Driver for terminal output
 out_fdt:
 	db "Terminal"
-times 0x20 - ($ - $$) db 0
+times 0x20 - ($ - out_fdt) db 0
 	xor eax, eax
 	mov dword[out_fdt], eax
 	mov dword[out_fdt+0x4], eax

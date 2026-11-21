@@ -6,6 +6,11 @@ pageAllocate:
 	and al, 0x0f
 	movzx ecx, al
 	inc ecx
+
+	push ecx ; save allocated mem
+	shl ecx, 12
+	add dword[0x50c], ecx
+	pop ecx
 	
 pageAllocate_search:
 	push edx

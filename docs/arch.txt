@@ -5,6 +5,7 @@ QWORD		0x600		TSC start
 DWORD		0x608		LFB ptr					>> BEFORE initializeMemory();
 BYTE		0x60c		RAM block count			>> BEFORE initializeMemory();
 DWORD		0x608		TID
+DWORD		0x60c		Total Allocated Memory
 QWORD[]		0x800		IDT
 DWORD[]		0x5000		PD
 DWORD[]		0x6000		PT <1MB ident.

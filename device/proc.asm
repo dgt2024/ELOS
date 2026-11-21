@@ -1,7 +1,12 @@
 kernelProcMain:
 	; note drivers were loaded from file descriptor table
 	; Setup terminal output
-	mov al, 2
+	mov esi, fileDescriptorTable+6 ; 3rd index on
+
+kernelProcMain_initLoop:
+	push esi ; Save FDT entry
+
+	mov al, 2 ; allocates DDHNDL + PD + PT
 	mov dh, 0
 	int 0x31
 
@@ -18,13 +23,16 @@ kernelProcMain:
 	mov dh, 14
 	int 0x31
 
-	mov eax, 0xa000
+	movzx esi, dword[esp+4]
+	movzx eax, word[esi]
+	shl eax, 4
+
 	mov dh, 13
 	int 0x31
 
 	mov esi, 0x3ff000
 	mov edi, 0x3fe000
-	mov ecx, 0x1000
+	mov ecx, 0x200
 	rep movsb
 
 	mov eax, dword[esp]
@@ -45,12 +53,19 @@ kernelProcMain:
 	or ax, 0x0003 ; code (R/W)
 	mov dword[0x3ff000], eax
 
-	mov ax, 0
+	mov ax, bp
 	mov dh, 9
 	int 0x31
 
 	mov word[0x80000ffc], bp
 	call 0x80000020
+
+	pop edx
+	pop esi
+
+	add esi, 3
+	cmp esi, fileDescriptorTable_end
+	jb kernelProcMain_initLoop
 
 	; change color to white on black
 	mov cl, 0x0f

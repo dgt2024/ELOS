@@ -17,8 +17,6 @@ main:
 	; driver syscall
 	call kernelABIStart
 
-	mov dword[0x608], 0 ; TID
-
 	; Initialize kernel data pages
 	mov word[0x5e0], 0x5001
 	mov word[0x5f8], 0x6001
@@ -47,6 +45,9 @@ main:
 	mov cr0, eax
 
 	call initializeMemory
+
+	mov dword[0x608], 0 ; TID
+	mov dword[0x60c], 0 ; alloc memory
 
 	; Start PID=0
 	mov edi, 0x9000

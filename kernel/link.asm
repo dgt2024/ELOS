@@ -188,7 +188,7 @@ mapDriver:
 	movzx eax, ax
 
 	; Calculate page directory address
-	mov eax, dword[0x180000+eax*4]
+	mov eax, dword[0x180000-4+eax*4]
 	test eax, eax
 
 	jz mapDriver_error

@@ -94,7 +94,8 @@ All functions receive a pointer and size as arguments
 
 Driver initialization must ocurr right after 0x80000020 (offset=0x20)
 
-INT 0x30 FUNCTIONS
+INT 0x30 Updates Page at EDX
+INT 0x31 FUNCTIONS
 	DH=00h; pageAllocate
 	DH=01h; registerContainer
 	DH=02h; getRawContainer

@@ -11,7 +11,9 @@ giveContainer:
 
 	; Map PDHNDL to temporary virtual address
 	mov dword[0x4000], ebp
-	invlpg[0x200000]
+
+	mov edx, 0x200000
+	int 0x30
 
 	inc byte[0x20002c]
 
@@ -49,8 +51,10 @@ mapContainer:
 	mov dword[0x4008], ebp
 	pop ebp
 
-	invlpg[0x200000]
-	invlpg[0x201000]
+	mov edx, 0x200000
+	int 0x30
+	mov edx, 0x201000
+	int 0x30
 
 	; find first empty slot in PD
 	push eax ; save raw HNDL
@@ -81,7 +85,9 @@ mapContainer_afterNewPT:
 
 	or bp, 0x3
 	mov dword[0x4000], ebp
-	invlpg[0x200000]
+
+	mov edx, 0x200000
+	int 0x30
 
 	movzx eax, ax
 	mov ebx, dword[eax*8+0x1fffc] ; low 32-bit
@@ -164,14 +170,18 @@ mapPage2:
 	and ax, 0xf000
 	or ax, 0x0003
 	mov dword[0x4ff0], eax
-	invlpg [0x3fe000]
+
+	mov edx, 0x3fe000
+	int 0x30
 	ret
 
 mapPage1:
 	and ax, 0xf000
 	or ax, 0x0003
 	mov dword[0x4ff8], eax
-	invlpg [0x3ff000]
+
+	mov edx, 0x3ff000
+	int 0x30
 	ret
 
 mapDriver:
@@ -188,7 +198,9 @@ mapDriver:
 	or ax, 0x0001
 
 	mov dword[0x200070], eax ; PDPT[3]
-	invlpg [0x80000000]
+
+	mov edx, 0x80000000
+	int 0x30
 	ret
 
 mapDriver_error:

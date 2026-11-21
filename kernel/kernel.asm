@@ -15,8 +15,7 @@ main:
 	lidt [idtTable]
 
 	; driver syscall
-	mov dword[0x982], 0xae000008
-	mov word[0x980], kernelDriver
+	call kernelABIStart
 
 	mov dword[0x608], 0 ; TID
 

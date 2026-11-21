@@ -14,7 +14,7 @@ times 510 - ($ - $$) db 0
 %include "driver/driver.asm"
 %include "driver/syscall.asm"
 %include "device/device.asm"
-times 512 * 4 - ($ - $$) db 0
+times 512 * 5 - ($ - $$) db 0
 section .program vstart=0x40001000
 %include "device/proc.asm"
 times 512 - ($ - $$) db 0

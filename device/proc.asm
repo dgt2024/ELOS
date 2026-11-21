@@ -3,24 +3,24 @@ kernelProcMain:
 	; Setup terminal output
 	mov al, 2
 	mov dh, 0
-	int 0x30
+	int 0x31
 
 	push edx ; Save DDHNDL for later
 
 	mov eax, edx
 	mov dh, 8
-	int 0x30
+	int 0x31
 
 	mov ebp, edx
 
 	mov eax, dword[esp]
 
 	mov dh, 14
-	int 0x30
+	int 0x31
 
 	mov eax, 0xa000
 	mov dh, 13
-	int 0x30
+	int 0x31
 
 	mov esi, 0x3ff000
 	mov edi, 0x3fe000
@@ -31,7 +31,7 @@ kernelProcMain:
 	add eax, 0x1000 ; page directory
 
 	mov dh, 13
-	int 0x30
+	int 0x31
 
 	mov eax, dword[esp]
 	add eax, 0x2000 ; page table
@@ -39,7 +39,7 @@ kernelProcMain:
 	mov dword[0x3ff000], eax
 
 	mov dh, 13
-	int 0x30
+	int 0x31
 
 	mov eax, dword[esp]
 	or ax, 0x0003 ; code (R/W)
@@ -47,7 +47,7 @@ kernelProcMain:
 
 	mov ax, 0
 	mov dh, 9
-	int 0x30
+	int 0x31
 
 	mov word[0x80000ffc], bp
 	call 0x80000020
@@ -57,7 +57,7 @@ kernelProcMain:
 	mov ax, 0
 	mov dh, 11
 	mov bl, 7
-	int 0x30
+	int 0x31
 
 	; print string2
 	mov edi, str
@@ -65,7 +65,7 @@ kernelProcMain:
 	mov ax, 0
 	mov dh, 11
 	mov bl, 6
-	int 0x30
+	int 0x31
 
 	cli
 	jmp $

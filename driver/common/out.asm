@@ -15,7 +15,7 @@ times 0x20 - ($ - $$) db 0
 	mov al, 0x00
 	mov ebx, "OUT "
 	mov dh, 12
-	int 0x30
+	int 0x31
 	ret
 
 out_sendFunc:

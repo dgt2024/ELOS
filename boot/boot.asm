@@ -1,5 +1,13 @@
 start:
 	cli
+
+	push dx 
+	; Store TSC clock to logging stats (as soon as possible)
+	rdtsc
+	mov dword[0x600], eax
+	mov dword[0x604], edx
+	pop dx
+
 	cld
 	xor ax, ax
 	mov ds, ax
@@ -8,7 +16,7 @@ start:
 	mov ss, ax
 	mov sp, 0x7c00
 
-	mov al, 0x03
+	mov ax, 0x03
 	int 0x10
 
 	mov ah, 0x01
@@ -34,11 +42,6 @@ fileDescriptorRead:
 	add cl, al ; next
 	cmp si, bp
 	jb fileDescriptorRead
-
-	; Store TSC clock to logging stats
-	rdtsc
-	mov dword[0x600], eax
-	mov dword[0x604], ecx
 
 	; Read RAM block array
 	xor ebx, ebx

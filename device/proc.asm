@@ -81,6 +81,21 @@ kernelProcMain_initLoop:
 	mov bl, 7
 	int 0x33
 
+	rdtsc
+	sub eax, dword[0x600]
+	sub edx, dword[0x604]
+
+	push eax
+
+	mov eax, edx
+	mov edi, str_num
+	mov ecx, 8
+	call intToStr
+
+	pop eax
+	mov ecx, 8
+	call intToStr
+
 	; print string2 on OUT
 	mov edi, str
 	mov ecx, str_end-str
@@ -100,6 +115,32 @@ kernelProcMain_initLoop:
 	cli
 	jmp $
 
+intToStr:
+	rol eax, 4
+
+	push eax
+	and al, 0x0f
+
+	cmp al, 0x0a
+	jae intToStr_letter
+
+	add al, '0'
+	
+	stosb
+	pop eax
+	loop intToStr
+	ret
+
+intToStr_letter:
+	add al, 'A'-0x0a
+
+	stosb
+	pop eax
+	loop intToStr
+	ret
+
 str:
-	db "File Table Initialized.", 0x0a
+	db "File Table Initialized in 0x"
+str_num:
+	db "XXXXXXXXXXXXXXXX TSC ticks from boot", 0x0a
 str_end:

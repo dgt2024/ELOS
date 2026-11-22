@@ -72,5 +72,5 @@ main:
 	; Run procedures
 	jmp startScheduler
 kprocName:
-	db "kernelproc"
+	db "kproc"
 kprocName_end:

@@ -31,12 +31,30 @@ out_sendFunc:
 	cld
 out_sendFunc_loop:
 	lodsb
+
+	cmp al, 0x0a
+	je out_sendFunc_newline
+
 	stosb
 
 	mov al, byte[out_byteConfig]
 	stosb
 	loop out_sendFunc_loop
 
+	clc
+	ret
+
+out_sendFunc_newline:
+	sub edi, 0xb8000
+
+	xor edx, edx
+	mov eax, edi
+	mov ebx, 40
+
+	div ebx
+
+	sub edi, edx
+	
 	clc
 	ret
 

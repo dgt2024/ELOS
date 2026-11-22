@@ -8,12 +8,17 @@ kernelABIStart:
 	ret
 
 kernelABIUpdate:
+	mov byte[0x200032], 0x30 ; last syscall #
+	mov byte[0x200033], 0 ; last syscall function
+	inc word[0x200036]
+	
 	invlpg [edx]
 	iretd
 
 kernelABIDriver:
-	mov byte[0x200032], 0x30 ; last syscall #
+	mov byte[0x200032], 0x31 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
+	inc word[0x200036] ; syscall count
 
 	movzx edx, dh
 	call dword[kernelABIDriver_lookup+edx*4]

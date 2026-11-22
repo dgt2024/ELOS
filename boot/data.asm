@@ -22,9 +22,9 @@ fileDescriptorTable:
 	dw 0x0900
 	db 0x01
 	; common/out:
-	dw 0x0a00
+	dw 0x0b00
 	db 0x01
 	; common/uart:
-	dw 0x0b00
+	dw 0x0a00
 	db 0x01
 fileDescriptorTable_end:

@@ -77,7 +77,7 @@ kernelProcMain_initLoop:
 	; print string2 on OUT
 	mov edi, str
 	mov ecx, str_end-str
-	mov ax, 0 ; linux' /dev/tty1
+	mov ax, 1 ; linux' /dev/tty1
 	mov dh, 11
 	mov bl, 6
 	int 0x31
@@ -85,7 +85,7 @@ kernelProcMain_initLoop:
 	; print string2 on COM1
 	mov edi, str
 	mov ecx, str_end-str
-	mov ax, 1 ; linux' /dev/ttyS0
+	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 11
 	mov bl, 6
 	int 0x31
@@ -94,5 +94,5 @@ kernelProcMain_initLoop:
 	jmp $
 
 str:
-	db "Hello, World!"
+	db "fileDescriptorTable loaded", 10
 str_end:

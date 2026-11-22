@@ -9,6 +9,10 @@ start:
 	mov sp, 0x7c00
 	int 0x10
 
+	mov ah, 0x01
+	mov cx, 0x2607
+	int 0x10
+
 	; Get kernel from disk
 	xor bx, bx
 	mov cx, 0x0002

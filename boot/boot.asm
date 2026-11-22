@@ -7,6 +7,8 @@ start:
 	mov fs, ax
 	mov ss, ax
 	mov sp, 0x7c00
+
+	mov al, 0x03
 	int 0x10
 
 	mov ah, 0x01

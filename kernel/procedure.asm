@@ -1,6 +1,7 @@
 createProcedure:
 	push edx
 	push ecx
+	push ebx
 
 	push eax ; load addr
 
@@ -16,8 +17,9 @@ createProcedure:
 
 	call getRawContainer
 
-	mov dword[0x4000], edx
 	or dx, 0x0003
+	mov dword[0x4000], edx
+
 	invlpg[0x200000]
 
 	mov esi, dword[esp+4] ; reload addr
@@ -26,8 +28,9 @@ createProcedure:
 	rep movsb
 
 	pop eax
-	pop esi
+	pop edi
 
+	pop ebx
 	pop ecx
 	pop edx
 

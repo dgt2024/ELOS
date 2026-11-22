@@ -1,17 +1,8 @@
 ; Driver for terminal output
 out_fdt:
-	db "Terminal"
+	dd 0, 0, 0, 0, 0, 0
+	dd out_sendFunc, out_ctrlFunc
 times 0x20 - ($ - out_fdt) db 0
-	xor eax, eax
-	mov dword[out_fdt], eax
-	mov dword[out_fdt+0x4], eax
-	mov dword[out_fdt+0x8], eax
-	mov dword[out_fdt+0xc], eax
-	mov dword[out_fdt+0x10], eax
-	mov dword[out_fdt+0x14], eax
-	mov dword[out_fdt+0x18], out_sendFunc
-	mov dword[out_fdt+0x1c], out_ctrlFunc
-
 	mov al, 0x00
 	mov ebx, "OUT "
 	mov dh, 12

@@ -30,7 +30,14 @@ kernelProcMain_initLoop:
 	mov dh, 13
 	int 0x31
 
+	movzx eax, word[esi]
+	shl eax, 4
+
+	and ax, 0x0fff
+
 	mov esi, 0x3ff000
+	add esi, eax
+
 	mov edi, 0x3fe000
 	mov ecx, 0x200
 	rep movsb
@@ -94,5 +101,5 @@ kernelProcMain_initLoop:
 	jmp $
 
 str:
-	db "fileDescriptorTable loaded", 10
+	db "File Table Initialized...", 10
 str_end:

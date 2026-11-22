@@ -1,18 +1,9 @@
 ; Driver for terminal uartput
 uart_fdt:
-	db "Serial Logger"
+	dd 0, 0, 0, 0, 0, 0
+	dd uart_sendFunc, 0
 times 0x20 - ($ - uart_fdt) db 0
 uart_main:
-	xor eax, eax
-	mov dword[uart_fdt], eax
-	mov dword[uart_fdt+0x4], eax
-	mov dword[uart_fdt+0x8], eax
-	mov dword[uart_fdt+0xc], eax
-	mov dword[uart_fdt+0x10], eax
-	mov dword[uart_fdt+0x14], eax
-	mov dword[uart_fdt+0x18], uart_sendFunc
-	mov dword[uart_fdt+0x1c], eax
-
 	mov edi, uart_devtable
 	mov ebx, "COM1"
 
@@ -79,12 +70,21 @@ uart_skip:
 	ret
 
 uart_sendFunc:
+	mov ebp, ecx
+	; ebp=preamble end (ECX=EBP, preamble end)
+
+	add ecx, uart_preambleEnd - uart_preamble
+	; add preamble
+
 	mov esi, edi
 	shr edx, 24
 	sub dl, '1' ; COM<n> -> n - 1
 	
 	mov dx, word[uart_devtable+edx*2]
 	add dx, 5 ; port+5
+
+	push esi ; save str after preamble
+	mov esi, uart_preamble ; set preamble first
 
 uart_sendFunc_isEmpty:
 	in al, dx
@@ -98,10 +98,21 @@ uart_sendFunc_isEmpty:
 	out dx, al
 
 	add dx, 5 ; port+5
+
+	cmp ecx, ebp
+	je uart_endPreamble
+
 	loop uart_sendFunc_isEmpty
 
 	clc
 	ret
+
+uart_endPreamble:
+	pop esi
+	loop uart_sendFunc_isEmpty
+
+	stc
+	ret2
 
 uart_devtable:
 	dw 0x3f8
@@ -113,3 +124,7 @@ uart_devtable:
 	dw 0x5e8
 	dw 0x4e8 
 uart_devtableEnd:
+
+uart_preamble:
+	db "[SERIAL] "
+uart_preambleEnd:

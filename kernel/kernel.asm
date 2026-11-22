@@ -50,7 +50,7 @@ main:
 	mov dword[0x60c], 0 ; alloc memory
 
 	; Start PID=0
-	mov ax, 0x9000
+	mov eax, 0x9000
 	mov bl, 0xdf
 	mov ecx, kprocName_end-kprocName
 	mov esi, kprocName

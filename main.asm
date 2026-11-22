@@ -24,3 +24,6 @@ times 512 - ($ - $$) db 0
 section .driver.uart vstart=0x80000000
 %include "driver/common/uart.asm"
 times 512 - ($ - $$) db 0
+section .driver.pic vstart=0x80000000
+%include "driver/common/pic.asm"
+times 512 - ($ - $$) db 0

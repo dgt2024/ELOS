@@ -1,4 +1,22 @@
 runDevice:
+	test byte[esp+7], 0x80
+	jz runDevice_driverCall
+
+	push eax ; save eax (ops will ocurr)
+
+	add edi, 0x40000000
+
+	mov eax, dword[0x200070]
+	mov dword[0x200078], eax ; 0x80000000 -> 0xc0000000
+
+	mov eax, dword[0x200074]
+	mov dword[0x20007c], eax
+	int 0x32
+
+	pop eax ; reload
+
+runDevice_driverCall:
+
 	movzx eax, ax
 
 	cmp byte[0x100000+eax*8], 0
@@ -8,6 +26,20 @@ runDevice:
 	mov ax, word[0x100002+eax*8]
 
 	call runDriver
+
+	pushf
+
+	test byte[esp+7], 0x80
+	jz runDevice_driverCallReturn
+	mov eax, dword[0x200078]
+	mov dword[0x200070], eax ; 0x80000000 -> 0xc0000000
+
+	mov eax, dword[0x20007c]
+	mov dword[0x200074], eax
+runDevice_driverCallReturn:
+
+	popf
+
 	jc runDevice_error
 
 	clc

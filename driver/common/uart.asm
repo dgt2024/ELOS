@@ -1,7 +1,7 @@
 ; Driver for terminal uartput
 uart_fdt:
-	dd 0, 0, 0, 0, 0, 0
-	dd uart_sendFunc, 0
+	dd 0, 0, 0, 0
+	dd 0, 0, uart_sendFunc, 0
 times 0x20 - ($ - uart_fdt) db 0
 uart_main:
 	mov edi, uart_devtable
@@ -58,7 +58,7 @@ uart_findCOMPorts:
 	mov al, 0x01
 	mov dh, 12
 	push edi
-	int 0x31
+	int 0x33
 	pop edi
 
 uart_skip:
@@ -71,6 +71,7 @@ uart_skip:
 
 uart_sendFunc:
 	mov ebp, ecx
+	inc ebp
 	; ebp=preamble end (ECX=EBP, preamble end)
 
 	add ecx, uart_preambleEnd - uart_preamble
@@ -112,7 +113,7 @@ uart_endPreamble:
 	loop uart_sendFunc_isEmpty
 
 	stc
-	ret2
+	ret
 
 uart_devtable:
 	dw 0x3f8

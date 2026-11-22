@@ -85,7 +85,7 @@ All functions receive a pointer and size as arguments
 0x000: init()= initializes device
 0x004: open()= starts device
 0x008: read()= gets data from device
-0x00c: send()= sends queued data to device
+0x00c: misc()= miscelaneous, used for IRQs
 0x010: fnsh()= ends(finishes) device
 0x014: clos()= closes device
 0x018: writ()= writes data to device
@@ -96,7 +96,7 @@ All functions receive a pointer and size as arguments
 Driver initialization must ocurr right after 0x80000020 (offset=0x20)
 
 INT 0x30 Updates Page at EDX
-INT 0x31 FUNCTIONS
+int 0x33 FUNCTIONS
 	DH=00h; pageAllocate
 	DH=01h; registerContainer
 	DH=02h; getRawContainer

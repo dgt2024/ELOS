@@ -6,7 +6,7 @@ times 0x20 - ($ - out_fdt) db 0
 	mov al, 0x00
 	mov ebx, "OUT "
 	mov dh, 12
-	int 0x31
+	int 0x33
 	ret
 
 out_sendFunc:

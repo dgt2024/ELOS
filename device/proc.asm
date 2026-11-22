@@ -8,27 +8,27 @@ kernelProcMain_initLoop:
 
 	mov al, 2 ; allocates DDHNDL + PD + PT
 	mov dh, 0
-	int 0x31
+	int 0x33
 
 	push edx ; Save DDHNDL for later
 
 	mov eax, edx
 	mov dh, 8
-	int 0x31
+	int 0x33
 
 	mov ebp, edx
 
 	mov eax, dword[esp]
 
 	mov dh, 14
-	int 0x31
+	int 0x33
 
 	movzx esi, dword[esp+4]
 	movzx eax, word[esi]
 	shl eax, 4
 
 	mov dh, 13
-	int 0x31
+	int 0x33
 
 	movzx eax, word[esi]
 	shl eax, 4
@@ -46,7 +46,7 @@ kernelProcMain_initLoop:
 	add eax, 0x1000 ; page directory
 
 	mov dh, 13
-	int 0x31
+	int 0x33
 
 	mov eax, dword[esp]
 	add eax, 0x2000 ; page table
@@ -54,7 +54,7 @@ kernelProcMain_initLoop:
 	mov dword[0x3ff000], eax
 
 	mov dh, 13
-	int 0x31
+	int 0x33
 
 	mov eax, dword[esp]
 	or ax, 0x0003 ; code (R/W)
@@ -62,7 +62,7 @@ kernelProcMain_initLoop:
 
 	mov ax, bp
 	mov dh, 9
-	int 0x31
+	int 0x33
 
 	mov word[0x80000ffc], bp
 	call 0x80000020
@@ -79,7 +79,7 @@ kernelProcMain_initLoop:
 	mov ax, 0
 	mov dh, 11
 	mov bl, 7
-	int 0x31
+	int 0x33
 
 	; print string2 on OUT
 	mov edi, str
@@ -87,7 +87,7 @@ kernelProcMain_initLoop:
 	mov ax, 1 ; linux' /dev/tty1
 	mov dh, 11
 	mov bl, 6
-	int 0x31
+	int 0x33
 
 	; print string2 on COM1
 	mov edi, str
@@ -95,11 +95,11 @@ kernelProcMain_initLoop:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 11
 	mov bl, 6
-	int 0x31
+	int 0x33
 
 	cli
 	jmp $
 
 str:
-	db "File Table Initialized...", 10
+	db "File Table Initialized.", 0x0a
 str_end:

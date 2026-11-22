@@ -1,4 +1,7 @@
 ; Driver for terminal uartput
+uart_fdt:
+	db "Serial Logger"
+times 0x20 - ($ - uart_fdt) db 0
 uart_main:
 	xor eax, eax
 	mov dword[uart_fdt], eax

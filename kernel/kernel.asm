@@ -50,11 +50,7 @@ main:
 	mov dword[0x60c], 0 ; alloc memory
 
 	; Start PID=0
-	mov edi, 0x9000
-	mov ax, 0x0014
-	mov bx, 0x0000
-	call registerContainer ; CODE DATA
-	mov ax, dx
+	mov ax, 0x9000
 	mov bl, 0xdf
 	mov ecx, kprocName_end-kprocName
 	mov esi, kprocName

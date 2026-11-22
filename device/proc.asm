@@ -74,10 +74,18 @@ kernelProcMain_initLoop:
 	mov bl, 7
 	int 0x31
 
-	; print string2
+	; print string2 on OUT
 	mov edi, str
 	mov ecx, str_end-str
-	mov ax, 0
+	mov ax, 0 ; linux' /dev/tty1
+	mov dh, 11
+	mov bl, 6
+	int 0x31
+
+	; print string2 on COM1
+	mov edi, str
+	mov ecx, str_end-str
+	mov ax, 1 ; linux' /dev/ttyS0
 	mov dh, 11
 	mov bl, 6
 	int 0x31

@@ -33,6 +33,6 @@ kernelABIDriver_lookup:
 	dd runDriver
 	dd runDevice
 	dd createDevice
-	; dh=12
+	;
 	dd mapPage1
 	dd mapPage2

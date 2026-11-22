@@ -34,7 +34,7 @@ kernel/scheduler.asm
  - startScheduler -> NO INPUT -> NO OUTPUT : INFINITE
 driver/driver.asm
  - registerDriver -> EAX=ADDR -> DX=DDHNDL
- - runDriver -> AX=DDHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG
+ - runDriver -> AX=DDHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG,EDX=CINFO
 device/device.asm
  - runDevice -> AX=DVHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG
  - createDevice -> AL=TYPE,EBX=CINFO -> DX=DVHNDL : OWNER CURRENT

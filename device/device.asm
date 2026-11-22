@@ -1,10 +1,10 @@
 runDevice:
 	movzx eax, ax
-	mov edx, eax
 
 	cmp byte[0x100000+eax*8], 0
 	je runDevice_error
 
+	mov edx, dword[0x100004+eax*8]
 	mov ax, word[0x100002+eax*8]
 
 	call runDriver

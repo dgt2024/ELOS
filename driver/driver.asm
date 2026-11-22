@@ -27,7 +27,9 @@ runDriver:
 	movzx ebx, bl
 	and bl, 0x7
 
+	push edx
 	call mapDriver
+	pop edx
 	jc runDriver_null
 
 	mov eax, dword[0x80000000+ebx*4]

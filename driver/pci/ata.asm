@@ -30,4 +30,16 @@ ata_initFunc:
 	mov ebx, edi
 	mov dh, 15
 	int 0x33
+
+	; print string2 on COM1
+	mov edi, ata_initStr
+	mov ecx, ata_initStr_end - ata_initStr
+	mov ax, 1 ; linux' /dev/ttyS0
+	mov dh, 13
+	mov bl, 6
+	int 0x33
 	ret
+
+ata_initStr:
+	db "ATA device found!", 10
+ata_initStr_end:

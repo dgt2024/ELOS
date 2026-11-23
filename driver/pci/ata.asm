@@ -26,6 +26,8 @@ ata_pciData:
 	dd 0x000101 ; class 1, subclass 1
 
 ata_initFunc:
-	cli
-	jmp $
+	mov al, 0x01
+	mov ebx, edi
+	mov dh, 15
+	int 0x33
 	ret

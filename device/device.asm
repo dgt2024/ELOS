@@ -1,10 +1,18 @@
 runDevice:
-	test byte[esp+7], 0x80
+	sub esp, 8
+
+	test byte[esp+15], 0x80
 	jz runDevice_driverCall
 
 	push eax ; save eax (ops will ocurr)
 
 	add edi, 0x40000000
+
+	mov eax, dword[0x200078]
+	mov dword[esp+4], eax
+
+	mov eax, dword[0x20007c]
+	mov dword[esp+8], eax
 
 	mov eax, dword[0x200070]
 	mov dword[0x200078], eax ; 0x80000000 -> 0xc0000000
@@ -29,18 +37,26 @@ runDevice_driverCall:
 
 	pushf
 
-	test byte[esp+11], 0x80
+	test byte[esp+19], 0x80
 	jz runDevice_driverCallReturn
 
 	mov eax, dword[0x200078]
-	mov dword[0x200070], eax ; 0x80000000 -> 0xc0000000
+	mov dword[0x200070], eax
 
 	mov eax, dword[0x20007c]
 	mov dword[0x200074], eax
+
+	mov eax, dword[esp+4]
+	mov dword[0x200078], eax
+
+	mov eax, dword[esp+8]
+	mov dword[0x20007c], eax
 	int 0x32
 	
 runDevice_driverCallReturn:
 	popf
+
+	add esp, 8
 
 	ret
 

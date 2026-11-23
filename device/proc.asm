@@ -75,10 +75,10 @@ kernelProcMain_initLoop:
 	jb kernelProcMain_initLoop
 
 	; change color to white on black
-	mov cl, 0x0f
+	mov cl, 0x0a
 	mov ax, 0
 	mov dh, 11
-	mov bl, 7
+	mov bl, 3
 	int 0x33
 
 	rdtsc

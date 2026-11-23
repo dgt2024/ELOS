@@ -24,11 +24,11 @@ times 0x20 - ($ - pic_fdt) db 0
 	mov edi, pic_initStr
 	mov ecx, pic_initStr_end - pic_initStr
 	mov ax, 1 ; linux' /dev/ttyS0
-	mov dh, 12
+	mov dh, 13
 	mov bl, 6
 	int 0x33
 	
-	mov dh, 16
+	mov dh, 11
 	int 0x33
 	ret
 

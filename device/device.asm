@@ -90,6 +90,8 @@ createDevice_found:
 	mov word[esi+2], dx
 	mov dword[esi+4], ebx
 
+	mov word[edi-2], dx ; write ID
+
 	mov dx, cx
 	
 	clc
@@ -97,4 +99,9 @@ createDevice_found:
 
 createDevice_error:
 	stc
+	ret
+
+endDevice:
+	cli
+	jmp $
 	ret

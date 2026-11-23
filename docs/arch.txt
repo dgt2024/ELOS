@@ -84,7 +84,8 @@ BP0E	BP1E	BP2E	BP3E	Reserved
 
 **DVHNDL structure**:
 
-
+0     1     2     3     4     5     6     7     8
+TYPE  TID   DRIVER      CINFO
 
 **DDHNDL structure**:
 
@@ -101,19 +102,22 @@ All functions receive a pointer and size as arguments
 0xffc: DDHNDL
 
 INT 0x30 Updates Page at EDX
-int 0x33 FUNCTIONS
-	DH=00h; pageAllocate
-	DH=01h; registerContainer
-	DH=02h; getRawContainer
-	DH=03h; deleteContainer
-	DH=04h; createProcedure
-	DH=05h; registerProcedure
-	DH=06h; giveContainer
-	DH=07h; mapContainer
-	DH=08h; registerDriver
-	DH=09h; mapDriver
-	DH=0Ah; runDriver
-	DH=0Bh; runDevice
-	DH=0Ch; createDevice
-	DH=0Dh; mapPage1
-	DH=0Eh; mapPage2
+INT 0x31 Updates IDT
+INT 0x32 Updates CR3 (All pages)
+INT 0x33 Driver ABI
+	DH=0;	pageAllocate
+	DH=1;	pageFree
+	DH=2;	registerContainer
+	DH=3;	getRawContainer
+	DH=4;	deleteContainer
+	DH=5;	createProcedure
+	DH=6;	registerProcedure
+	DH=7;	giveContainer
+	DH=8;	mapContainer
+	DH=9;	registerDriver
+	DH=10;	mapDriver
+	DH=11;	runDriver
+	DH=12;	runDevice
+	DH=13;	createDevice
+	DH=14;	mapPage1
+	DH=15;	mapPage2

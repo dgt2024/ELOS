@@ -27,6 +27,9 @@ times 512 - ($ - $$) db 0
 section .driver.pic vstart=0x80000000
 %include "driver/common/pic.asm"
 times 512 - ($ - $$) db 0
-section .driver.ata vstart=0x80000000
+section .driver.pci vstart=0x80000000
 %include "driver/common/pci.asm"
+times 512 - ($ - $$) db 0
+section .driver.ata vstart=0x80000000
+%include "driver/pci/ata.asm"
 times 512 - ($ - $$) db 0

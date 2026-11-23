@@ -15,8 +15,84 @@ times 0x20 - ($ - pci_fdt) db 0
 	ret
 
 pci_initFunc:
-	cli
-	jmp $
+	mov ebx, 0x80000000
+	mov ecx, 0x10000
+
+	test byte[edi], 0x08
+	jz pci_initFunc_typeloop
+
+pci_initFunc_loop:
+	mov eax, ebx
+	call pci_readPort
+
+	test byte[edi], 0x04
+	jz pci_initFunc_skipdevice
+
+	cmp ax, word[edi+3]
+	je pci_initFunc_found
+
+pci_initFunc_skipdevice:
+
+	cmp ax, word[edi+5]
+	je pci_initFunc_found
+
+	add ebx, 0x800
+	loop pci_initFunc_loop
+	ret
+
+pci_initFunc_typeloop:
+	mov bl, 0x08
+	mov eax, ebx
+	call pci_readPort
+
+	rol eax, 8
+	test byte[edi], 0x04
+	jz pci_initFunc_skipclass
+
+	cmp al, byte[edi+3]
+	jne pci_initFunc_typeloopiterate
+
+pci_initFunc_skipclass:
+	rol eax, 8
+	test byte[edi], 0x02
+	jz pci_initFunc_skipsubclass
+
+	cmp al, byte[edi+4]
+	jne pci_initFunc_typeloopiterate
+
+pci_initFunc_skipsubclass:
+	rol eax, 8
+	test byte[edi], 0x01
+	jz pci_initFunc_skipprogif
+
+	cmp al, byte[edi+5]
+	jne pci_initFunc_typeloopiterate
+
+pci_initFunc_skipprogif:
+	jmp pci_initFunc_found
+
+pci_initFunc_typeloopiterate:
+	add ebx, 0x100
+	loop pci_initFunc_typeloop
+	ret
+
+pci_initFunc_found:
+	pushad
+	mov ecx, ebx
+	mov ax, word[edi+1] ; PCI device waiting
+	mov dh, 13
+	mov bl, 0
+	int 0x33
+	popad
+	jmp pci_initFunc_typeloopiterate
+
+pci_readPort:
+	mov dx, 0xcf8
+	out dx, eax
+
+	mov dx, 0xcfc
+	in eax, dx
+	ret
 
 pci_initMessage:
 	db "Initializing PCI devices...", 10

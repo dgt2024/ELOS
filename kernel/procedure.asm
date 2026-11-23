@@ -1,39 +1,4 @@
 createProcedure:
-	push edx
-	push ecx
-	push ebx
-
-	push eax ; load addr
-
-	mov al, 0
-	call pageAllocate
-	mov edi, edx
-	mov ax, 0x0004
-	mov bx, 0x0000
-	call registerContainer
-
-	mov ax, dx
-	push eax
-
-	call getRawContainer
-
-	or dx, 0x0003
-	mov dword[0x4000], edx
-
-	invlpg[0x200000]
-
-	mov esi, dword[esp+4] ; reload addr
-	mov edi, 0x200000
-	mov ecx, 0x1000
-	rep movsb
-
-	pop eax
-	pop edi
-
-	pop ebx
-	pop ecx
-	pop edx
-
 	push ax
 	push ecx ; Save title size
 	push esi ; Save title addr

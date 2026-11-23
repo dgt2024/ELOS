@@ -1,5 +1,5 @@
 pci_fdt:
-	dd 0, 0, 0, 0, 0, 0, 0, 0
+	dd pci_initFunc, 0, 0, 0, 0, 0, 0, 0
 times 0x20 - ($ - pci_fdt) db 0
 	mov edi, pci_initMessage
 	mov ecx, pci_initMessage_end - pci_initMessage
@@ -13,6 +13,11 @@ times 0x20 - ($ - pci_fdt) db 0
 	mov dh, 15
 	int 0x33
 	ret
+
+pci_initFunc:
+	cli
+	jmp $
+
 pci_initMessage:
 	db "Initializing PCI devices...", 10
 pci_initMessage_end:

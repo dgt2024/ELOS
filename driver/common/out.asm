@@ -1,7 +1,7 @@
 ; Driver for terminal output
 out_fdt:
 	dd 0, 0, 0, out_ctrlFunc, 0, 0
-	dd out_sendFunc, 0
+	dd out_sendFunc, out_ctrlFunc
 times 0x20 - ($ - out_fdt) db 0
 	mov al, 0x00
 	mov ebx, "OUT "

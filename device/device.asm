@@ -101,7 +101,22 @@ createDevice_error:
 	stc
 	ret
 
-endDevice:
-	cli
-	jmp $
+searchDevice:
+	mov edi, 0x100004
+	mov ecx, 0x10001
+
+searchDevice_loop:
+	scasd
+	je searchDevice_found
+
+	loop searchDevice_loop
+
+	stc
+	ret
+
+searchDevice_found:
+	not cx
+	mov dx, cx
+	
+	clc
 	ret

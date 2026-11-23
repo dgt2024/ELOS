@@ -36,11 +36,12 @@ kernel/scheduler.asm
  - startScheduler -> NO INPUT -> NO OUTPUT : INFINITE
 driver/driver.asm
  - registerDriver -> EAX=ADDR -> DX=DDHNDL
- - runDriver -> AX=DDHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG,EDX=CINFO
+ - runDriver -> AX=DDHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG,EDX=CINFO -> NO OUTPUT
  - endDriver -> NO INPUT -> NO OUTPUT : NO STATUS
 device/device.asm
- - runDevice -> AX=DVHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG
+ - runDevice -> AX=DVHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG -> NO OUTPUT
  - createDevice -> AL=TYPE,EBX=CINFO -> DX=DVHNDL : OWNER CURRENT
+ - searchDevice -> EAX=CINFO -> DX=DVHNDL
 
 **HNDL structure**:
 
@@ -97,7 +98,7 @@ All functions receive a pointer and size as arguments
 0x010: fnsh()= ends device (only seekable dev_types)
 0x014: clos()= closes device
 0x018: writ()= writes data to device
-0x01c: cinfo = contact info, depends on type
+0x01c: ctrl() = contact info, depends on type
 0x020: idrv  = initializes driver itself : NOT A POINTER
 0xffc: DDHNDL
 
@@ -121,3 +122,17 @@ INT 0x33 Driver ABI
 	DH=13;	createDevice
 	DH=14;	mapPage1
 	DH=15;	mapPage2
+
+**PCI init structure**
+
+Drivers call init(EDI, ECX) to ask PCI to poll devices and look for those devices, and call init() on themselves
+
+*EDI (NASM SYNTAX)
+
+db FLAGS
+dw DVHNDL
+dd DATA
+
+DATA ACCORDING TO FLAGS
+b3=1: DEVICE:VENDOR (DEVICE IF b2 SET)
+b3=0: 00|CLASS|SUBCLASS|PROG IF (CLASS IF b2,SUBCLASS IF b1,PROG IF IF b0)

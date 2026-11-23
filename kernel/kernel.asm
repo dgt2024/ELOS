@@ -46,11 +46,11 @@ main:
 
 	call initializeMemory
 
-	mov dword[0x608], 0 ; TID
-	mov dword[0x60c], 0 ; alloc memory
-
 	; Start PID=0
-	mov eax, 0x9000
+	mov edi, 0x9000
+	mov ax, 0x0004
+	call registerContainer
+	mov ax, dx
 	mov bl, 0xdf
 	mov ecx, kprocName_end-kprocName
 	mov esi, kprocName

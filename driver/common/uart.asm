@@ -55,7 +55,7 @@ uart_findCOMPorts:
 	add dx, 4
 	out dx, al
 
-	mov al, 0x01
+	mov al, 0x00
 	mov dh, 15
 	push edi
 	int 0x33

@@ -30,4 +30,7 @@ fileDescriptorTable:
 	; common/pic:
 	dw 0x0a40
 	db 0x01
+	; common/pci:
+	dw 0x0a60
+	db 0x01
 fileDescriptorTable_end:

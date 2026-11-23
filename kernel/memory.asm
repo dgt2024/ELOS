@@ -52,7 +52,7 @@ pageAllocate_succeed:
 pageAllocate_error:
 	stc ; Error
 	ret
-
+		
 initializeMemory:
 	mov edi, 0x1c0000
 	mov ecx, 0x20000

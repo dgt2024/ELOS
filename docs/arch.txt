@@ -36,6 +36,7 @@ kernel/scheduler.asm
 driver/driver.asm
  - registerDriver -> EAX=ADDR -> DX=DDHNDL
  - runDriver -> AX=DDHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG,EDX=CINFO
+ - endDriver -> NO INPUT -> NO OUTPUT : NO STATUS
 device/device.asm
  - runDevice -> AX=DVHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG
  - createDevice -> AL=TYPE,EBX=CINFO -> DX=DVHNDL : OWNER CURRENT

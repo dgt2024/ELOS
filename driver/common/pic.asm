@@ -27,6 +27,9 @@ times 0x20 - ($ - pic_fdt) db 0
 	mov dh, 11
 	mov bl, 6
 	int 0x33
+	
+	mov dh, 15
+	int 0x33
 	ret
 
 pic_initStr:

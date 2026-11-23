@@ -42,13 +42,18 @@ kernelABIUpdateCR3:
 	iretd
 
 kernelABIDriver:
-	mov byte[0x200032], 0x32 ; last syscall #
+	mov byte[0x200032], 0x33 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
 
 	movzx edx, dh
 	call dword[kernelABIDriver_lookup+edx*4]
+
 	iretd
+
+kernelABISkip:
+	cli
+	jmp $
 
 kernelABIDriver_lookup:
 	dd pageAllocate
@@ -67,3 +72,4 @@ kernelABIDriver_lookup:
 	;
 	dd mapPage1
 	dd mapPage2
+	dd endDriver

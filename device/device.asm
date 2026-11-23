@@ -29,20 +29,19 @@ runDevice_driverCall:
 
 	pushf
 
-	test byte[esp+7], 0x80
+	test byte[esp+11], 0x80
 	jz runDevice_driverCallReturn
+
 	mov eax, dword[0x200078]
 	mov dword[0x200070], eax ; 0x80000000 -> 0xc0000000
 
 	mov eax, dword[0x20007c]
 	mov dword[0x200074], eax
+	int 0x32
+	
 runDevice_driverCallReturn:
-
 	popf
 
-	jc runDevice_error
-
-	clc
 	ret
 
 runDevice_error:

@@ -45,3 +45,12 @@ runDriver:
 runDriver_null:
 	stc
 	ret
+
+endDriver:
+	movzx eax, word[0x80000ffc]
+	mov dword[0x180000-4+eax*4], 0
+	ret
+
+endDriver_error:
+	stc
+	ret

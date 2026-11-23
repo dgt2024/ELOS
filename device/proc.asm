@@ -13,21 +13,21 @@ kernelProcMain_initLoop:
 	push edx ; Save DDHNDL for later
 
 	mov eax, edx
-	mov dh, 8
+	mov dh, 9
 	int 0x33
 
 	mov ebp, edx
 
 	mov eax, dword[esp]
 
-	mov dh, 14
+	mov dh, 15
 	int 0x33
 
 	movzx esi, dword[esp+4]
 	movzx eax, word[esi]
 	shl eax, 4
 
-	mov dh, 13
+	mov dh, 14
 	int 0x33
 
 	movzx eax, word[esi]
@@ -45,7 +45,7 @@ kernelProcMain_initLoop:
 	mov eax, dword[esp]
 	add eax, 0x1000 ; page directory
 
-	mov dh, 13
+	mov dh, 14
 	int 0x33
 
 	mov eax, dword[esp]
@@ -53,7 +53,7 @@ kernelProcMain_initLoop:
 	or ax, 0x0001
 	mov dword[0x3ff000], eax
 
-	mov dh, 13
+	mov dh, 14
 	int 0x33
 
 	mov eax, dword[esp]
@@ -61,7 +61,7 @@ kernelProcMain_initLoop:
 	mov dword[0x3ff000], eax
 
 	mov ax, bp
-	mov dh, 9
+	mov dh, 10
 	int 0x33
 
 	mov word[0x80000ffc], bp
@@ -77,7 +77,7 @@ kernelProcMain_initLoop:
 	; change color to white on black
 	mov cl, 0x0a
 	mov ax, 0
-	mov dh, 11
+	mov dh, 12
 	mov bl, 3
 	int 0x33
 
@@ -100,7 +100,7 @@ kernelProcMain_initLoop:
 	mov edi, str
 	mov ecx, str_end-str
 	mov ax, 1 ; linux' /dev/tty1
-	mov dh, 11
+	mov dh, 12
 	mov bl, 6
 	int 0x33
 
@@ -108,7 +108,7 @@ kernelProcMain_initLoop:
 	mov edi, str
 	mov ecx, str_end-str
 	mov ax, 0 ; linux' /dev/ttyS0
-	mov dh, 11
+	mov dh, 12
 	mov bl, 6
 	int 0x33
 

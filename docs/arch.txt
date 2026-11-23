@@ -19,6 +19,7 @@ Global Functions:
 kernel/memory.asm
  - initializeMemory -> NO INPUT -> NO OUTPUT : NO STATUS
  - pageAllocate -> AL=SIZE -> EDX=ADDR
+ - pageFree -> AL=SIZE,BX=ADDR -> NO OUTPUT : NO STATUS
 kernel/container.asm
  - registerContainer -> EDI=PTR,AX=FLAGS,BX=HNDL -> DX=HNDL
  - getRawContainer -> AX=HANDLE -> EDX=PTR

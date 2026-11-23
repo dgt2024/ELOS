@@ -57,6 +57,7 @@ kernelABISkip:
 
 kernelABIDriver_lookup:
 	dd pageAllocate
+	dd pageFree
 	dd registerContainer
 	dd getRawContainer
 	dd deleteContainer

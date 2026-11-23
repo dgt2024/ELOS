@@ -47,6 +47,11 @@ runDriver_null:
 	ret
 
 endDriver:
+	mov al, 2
+	mov ebx, dword[0x180000-4+eax*4] 
+	mov dh, 1
+	int 0x33 ; free memory
+
 	movzx eax, word[0x80000ffc]
 	mov dword[0x180000-4+eax*4], 0
 	ret

@@ -5,7 +5,7 @@ out_fdt:
 times 0x20 - ($ - out_fdt) db 0
 	mov al, 0x00
 	mov ebx, "OUT "
-	mov dh, 12
+	mov dh, 13
 	int 0x33
 	ret
 

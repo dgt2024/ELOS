@@ -9,7 +9,7 @@ pageAllocate:
 
 	push ecx ; save allocated mem
 	shl ecx, 12
-	add dword[0x50c], ecx
+	add dword[0x60c], ecx
 	pop ecx
 	
 pageAllocate_search:
@@ -51,6 +51,25 @@ pageAllocate_succeed:
 	
 pageAllocate_error:
 	stc ; Error
+	ret
+
+pageFree:
+	and al, 0x0f
+	movzx ecx, al
+	inc ecx
+
+	push ecx ; save allocated mem
+	shl ecx, 12
+	sub dword[0x60c], ecx
+	pop ecx
+
+	sub ebx, 0x200000
+	shr ebx, 12 ; calculate bit
+
+pageFree_clrloop:
+	bts dword[0x1c0000], ebx
+	inc ebx
+	loop pageFree_clrloop
 	ret
 		
 initializeMemory:

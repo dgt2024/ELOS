@@ -112,6 +112,16 @@ kernelProcMain_initLoop:
 	mov bl, 6
 	int 0x33
 
+	mov eax, "LDFS"
+	mov dh, 14
+	int 0x33
+
+	mov ax, dx ; destination: PCI
+
+	mov dh, 13
+	mov bl, 2
+	int 0x33
+
 	cli
 	jmp $
 

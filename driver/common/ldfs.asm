@@ -1,10 +1,19 @@
 ; Linked Data Filesystem
 ldfs_fdt:
-	dd 0, 0, 0, 0, 0, 0, 0, ldfs_ctrlFunc
+	dd 0, 0, ldfs_readFunc, 0, 0, 0, 0, ldfs_ctrlFunc
 times 0x20 - ($ - ldfs_fdt) db 0
 	mov al, 0x00
 	mov ebx, "LDFS"
 	mov dh, 15
+	int 0x33
+	ret
+
+ldfs_readFunc:
+	mov edi, ldfs_free
+	mov ecx, 0
+	mov ax, word[ldfs_disk]
+	mov dh, 13
+	mov bl, 2
 	int 0x33
 	ret
 
@@ -58,3 +67,5 @@ ldfs_mainDevMessage_end:
 
 ldfs_disk:
 	dw 0
+
+ldfs_free:

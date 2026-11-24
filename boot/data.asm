@@ -40,3 +40,4 @@ fileDescriptorTable:
 	dw 0x0aa0
 	db 0x01
 fileDescriptorTable_end:
+	dd 10

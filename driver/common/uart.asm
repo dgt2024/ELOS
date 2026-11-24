@@ -51,7 +51,7 @@ uart_findCOMPorts:
 	cmp al, 0xae
 	jne uart_skip
 
-	mov al, 0x0f
+	mov al, 0x03
 	add dx, 4
 	out dx, al
 
@@ -67,6 +67,7 @@ uart_skip:
 	add edi, 2
 	cmp edi, uart_devtableEnd
 	jb uart_findCOMPorts
+	sti
 	ret
 
 uart_sendFunc:

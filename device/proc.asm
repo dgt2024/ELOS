@@ -35,11 +35,13 @@ kernelProcMain_initLoop:
 
 	and ax, 0x0fff
 
+	movzx ecx, byte[esi+2]
+	shl ecx, 9
+
 	mov esi, 0x3ff000
 	add esi, eax
 
 	mov edi, 0x3fe000
-	mov ecx, 0x200
 	rep movsb
 
 	mov eax, dword[esp]

@@ -1,12 +1,25 @@
 runDevice:
+	movzx eax, ax
+
+	cmp byte[0x100000+eax*8], 0
+	je runDevice_error
+
+	mov edx, dword[0x100004+eax*8]
+	mov ax, word[0x100002+eax*8]
+	
 	sub esp, 8
+
+	test edi, edi
+	jns runDevice_driverAddr
+
+	add edi, 0x40000000
+
+runDevice_driverAddr:
 
 	test byte[esp+15], 0x80
 	jz runDevice_driverCall
 
 	push eax ; save eax (ops will ocurr)
-
-	add edi, 0x40000000
 
 	mov eax, dword[0x200078]
 	mov dword[esp+4], eax
@@ -24,14 +37,6 @@ runDevice:
 	pop eax ; reload
 
 runDevice_driverCall:
-
-	movzx eax, ax
-
-	cmp byte[0x100000+eax*8], 0
-	je runDevice_error
-
-	mov edx, dword[0x100004+eax*8]
-	mov ax, word[0x100002+eax*8]
 
 	call runDriver
 
@@ -109,7 +114,7 @@ createDevice_found:
 	mov word[edi-2], dx ; write ID
 
 	mov dx, cx
-	
+
 	clc
 	ret
 
@@ -119,12 +124,13 @@ createDevice_error:
 
 searchDevice:
 	mov edi, 0x100004
-	mov ecx, 0x10001
+	mov ecx, 0x10000
 
 searchDevice_loop:
 	scasd
 	je searchDevice_found
 
+	add edi, 4
 	loop searchDevice_loop
 
 	stc
@@ -132,6 +138,7 @@ searchDevice_loop:
 
 searchDevice_found:
 	not cx
+	inc cx
 	mov dx, cx
 	
 	clc

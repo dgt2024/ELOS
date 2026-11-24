@@ -99,7 +99,7 @@ All functions receive a pointer and size as arguments
 0x010: fnsh()= ends device (only seekable dev_types)
 0x014: clos()= closes device
 0x018: writ()= writes data to device
-0x01c: ctrl() = contact info, depends on type
+0x01c: ctrl()= control function
 0x020: idrv  = initializes driver itself : NOT A POINTER
 0xffc: DDHNDL
 
@@ -139,3 +139,10 @@ dd DATA
 DATA ACCORDING TO FLAGS
 b3=1: DEVICE:VENDOR (DEVICE IF b2 SET)
 b3=0: 00|CLASS|SUBCLASS|PROG IF (CLASS IF b2,SUBCLASS IF b1,PROG IF IF b0)
+
+**Filesystem**
+
+	0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F   10
+0x0 SIZE
+0x1 TYP PRV WRT HDN RFU EXE F_TYPE  NAME SIZE
+0x2 & 0x3 POINTER TO FILE START

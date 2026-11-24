@@ -1,7 +1,8 @@
+; ATA driver (PCI native and IDE legacy)
 ata_fdt:
 	dd ata_initFunc, 0, 0, 0, ata_fnshFunc, 0, 0, 0
 times 0x20 - ($ - ata_fdt) db 0
-	mov al, 0x01
+	mov al, 0x00
 	mov ebx, "ATA "
 	mov dh, 15
 	int 0x33
@@ -27,11 +28,18 @@ ata_pciData:
 
 ata_initFunc:
 	mov al, 0x01
-	mov ebx, edi
+	mov ebx, ecx
 	mov dh, 15
 	int 0x33
 
-	; print string2 on COM1
+	cmp word[ata_mainDevice], 0
+	jne ata_initFunc_notmain
+
+	mov word[ata_mainDevice], dx
+
+ata_initFunc_notmain:
+
+	; print init on COM1
 	mov edi, ata_initStr
 	mov ecx, ata_initStr_end - ata_initStr
 	mov ax, 1 ; linux' /dev/ttyS0
@@ -43,7 +51,6 @@ ata_initFunc:
 ata_fnshFunc:
 	cmp edx, "ATA "
 	jne ata_fnshFunc_NA
-
 	mov eax, edx
 	mov dh, 14
 	int 0x33
@@ -52,8 +59,22 @@ ata_fnshFunc:
 	mov dh, 16
 	int 0x33
 
+	mov eax, "LDFS"
+	mov dh, 14
+	int 0x33
+
+	; print string2 on COM1
+	mov ax, dx
+
+	mov cx, word[ata_mainDevice]
+	mov dh, 13
+	mov bl, 7
+	int 0x33
 ata_fnshFunc_NA:
 	ret
+
+ata_mainDevice:
+	dw 0
 
 ata_initStr:
 	db "ATA device found!", 10

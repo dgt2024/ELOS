@@ -42,7 +42,7 @@ ata_initFunc_notmain:
 	; print init on COM1
 	mov edi, ata_initStr
 	mov ecx, ata_initStr_end - ata_initStr
-	mov ax, 1 ; linux' /dev/ttyS0
+	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
 	int 0x33

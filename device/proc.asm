@@ -76,13 +76,6 @@ kernelProcMain_initLoop:
 	cmp esi, fileDescriptorTable_end
 	jb kernelProcMain_initLoop
 
-	; change color to white on black
-	mov cl, 0x0a
-	mov ax, 0
-	mov dh, 13
-	mov bl, 3
-	int 0x33
-
 	rdtsc
 	sub eax, dword[0x600]
 	sub edx, dword[0x604]
@@ -106,10 +99,15 @@ kernelProcMain_initLoop:
 	mov bl, 6
 	int 0x33
 
+	mov eax, "OUT "
+	mov dh, 14
+	int 0x33
+
+	mov ax, dx ; destination: PCI
+
 	; print string2 on OUT
-	mov edi, str
-	mov ecx, str_end-str
-	mov ax, 1 ; linux' /dev/tty1
+	mov edi, bootStr
+	mov ecx, bootStr_end - bootStr
 	mov dh, 13
 	mov bl, 6
 	int 0x33
@@ -144,5 +142,9 @@ intToStr_letter:
 str:
 	db "File Table Initialized in 0x"
 str_num:
-	db "XXXXXXXXXXXXXXXX TSC ticks from boot", 0x0a
+	db "XXXXXXXXXXXXXXXX TSC ticks from boot", 10
 str_end:
+
+bootStr:
+	db "Booting up ELOS7...", 10
+bootStr_end:

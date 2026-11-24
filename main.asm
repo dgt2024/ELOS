@@ -18,11 +18,11 @@ times 512 * 5 - ($ - $$) db 0
 section .program vstart=0x40001000
 %include "device/proc.asm"
 times 512 - ($ - $$) db 0
-section .driver.out vstart=0x80000000
-%include "driver/common/out.asm"
-times 512 - ($ - $$) db 0
 section .driver.uart vstart=0x80000000
 %include "driver/common/uart.asm"
+times 512 - ($ - $$) db 0
+section .driver.out vstart=0x80000000
+%include "driver/common/out.asm"
 times 512 - ($ - $$) db 0
 section .driver.pic vstart=0x80000000
 %include "driver/common/pic.asm"

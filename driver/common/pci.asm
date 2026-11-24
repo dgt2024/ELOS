@@ -4,7 +4,7 @@ pci_fdt:
 times 0x20 - ($ - pci_fdt) db 0
 	mov edi, pci_initMessage
 	mov ecx, pci_initMessage_end - pci_initMessage
-	mov ax, 1 ; linux' /dev/ttyS0
+	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
 	int 0x33
@@ -33,7 +33,7 @@ pci_initFunc:
 
 	mov edi, pci_devInitMessage
 	mov ecx, pci_devInitMessage_end - pci_devInitMessage
-	mov ax, 1 ; linux' /dev/ttyS0
+	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
 	int 0x33
@@ -107,7 +107,7 @@ pci_initFunc_typeloopiterate:
 
 	mov edi, pci_devEndMessage
 	mov ecx, pci_devEndMessage_end - pci_devEndMessage
-	mov ax, 1 ; linux' /dev/ttyS0
+	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
 	int 0x33

@@ -36,7 +36,7 @@ ldfs_ctrlFunc:
 
 	mov edi, ldfs_mainDevMessage
 	mov ecx, ldfs_mainDevMessage_end - ldfs_mainDevMessage
-	mov ax, 1 ; linux' /dev/ttyS0
+	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
 	int 0x33

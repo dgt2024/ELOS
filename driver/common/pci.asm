@@ -74,6 +74,11 @@ pci_initFunc_skipprogif:
 pci_initFunc_typeloopiterate:
 	add ebx, 0x100
 	loop pci_initFunc_typeloop
+
+	mov ax, word[edi+1] ; PCI device waiting
+	mov dh, 13
+	mov bl, 4
+	int 0x33
 	ret
 
 pci_initFunc_found:

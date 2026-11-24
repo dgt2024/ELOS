@@ -136,3 +136,8 @@ searchDevice_found:
 	
 	clc
 	ret
+
+endDevice:
+	movzx eax, ax
+	mov byte[0x100000-8+eax*8], 0
+	ret

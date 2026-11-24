@@ -1,5 +1,5 @@
 ata_fdt:
-	dd ata_initFunc, 0, 0, 0, 0, 0, 0, 0
+	dd ata_initFunc, 0, 0, 0, ata_fnshFunc, 0, 0, 0
 times 0x20 - ($ - ata_fdt) db 0
 	mov al, 0x01
 	mov ebx, "ATA "
@@ -38,6 +38,21 @@ ata_initFunc:
 	mov dh, 13
 	mov bl, 6
 	int 0x33
+	ret
+
+ata_fnshFunc:
+	cmp edx, "ATA "
+	jne ata_fnshFunc_NA
+
+	mov eax, edx
+	mov dh, 14
+	int 0x33
+	
+	mov ax, dx ; destination: PCI
+	mov dh, 16
+	int 0x33
+
+ata_fnshFunc_NA:
 	ret
 
 ata_initStr:

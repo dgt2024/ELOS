@@ -20,14 +20,14 @@ kernelProcMain_initLoop:
 
 	mov eax, dword[esp]
 
-	mov dh, 17
+	mov dh, 18
 	int 0x33
 
 	movzx esi, dword[esp+4]
 	movzx eax, word[esi]
 	shl eax, 4
 
-	mov dh, 16
+	mov dh, 17
 	int 0x33
 
 	movzx eax, word[esi]
@@ -45,7 +45,7 @@ kernelProcMain_initLoop:
 	mov eax, dword[esp]
 	add eax, 0x1000 ; page directory
 
-	mov dh, 16
+	mov dh, 17
 	int 0x33
 
 	mov eax, dword[esp]
@@ -53,7 +53,7 @@ kernelProcMain_initLoop:
 	or ax, 0x0001
 	mov dword[0x3ff000], eax
 
-	mov dh, 16
+	mov dh, 17
 	int 0x33
 
 	mov eax, dword[esp]

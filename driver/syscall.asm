@@ -72,6 +72,7 @@ kernelABIDriver_lookup:
 	dd runDevice
 	dd searchDevice
 	dd createDevice
+	dd endDevice
 	;
 	dd mapPage1
 	dd mapPage2

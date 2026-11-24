@@ -42,6 +42,7 @@ device/device.asm
  - runDevice -> AX=DVHNDL,BL=SUBFUNC,EDI=STR,ECX=SIZE/ARG -> NO OUTPUT
  - createDevice -> AL=TYPE,EBX=CINFO -> DX=DVHNDL : OWNER CURRENT
  - searchDevice -> EAX=CINFO -> DX=DVHNDL
+ - endDevice -> AX=DVHNDL -> NO OUTPUT : NO STATUS
 
 **HNDL structure**:
 
@@ -118,10 +119,12 @@ INT 0x33 Driver ABI
 	DH=9;	registerDriver
 	DH=10;	mapDriver
 	DH=11;	runDriver
-	DH=12;	runDevice
-	DH=13;	createDevice
-	DH=14;	mapPage1
-	DH=15;	mapPage2
+	DH=12;	endDriver
+	DH=13;	runDevice
+	DH=14;	searchDevice
+	DH=15;	createDevice
+	DH=16;	mapPage1
+	DH=17;	mapPage2
 
 **PCI init structure**
 

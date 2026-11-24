@@ -156,6 +156,14 @@ ata_initFunc_poll:
 	test al, 0x08
 	jz ata_initFunc_poll
 
+	sub dx, 7
+
+	push edi
+	mov ecx, 128
+	lea edi, [ata_devices+512]
+	rep insd
+	pop edi
+
 	push ebx
 	push ecx
 	push edx
@@ -183,17 +191,88 @@ ata_initFunc_notmain:
 	mov dh, 13
 	mov bl, 6
 	int 0x33
-
 ata_initFunc_nodev:
 	inc ecx
 	loop ata_initFunc_find
 
-	inc byte[ata_deviceCount]
+	add byte[ata_deviceCount], 4
 	ret
 
 ata_readFunc:
+	call ata_useDevice
+	add dx, 2 ; port+7
+	mov al, 0x20 ; ATA_CMD_READ_PIO = 0x20
+	out dx, al
+	
+	add dx, 5 ; port+12
+	times 4 in al, dx ; wait 400ns
+
+	sub dx, 5 ; port+7
+ata_waitBsy:
+	in al, dx
+
+	test al, 0x80
+	jnz ata_waitBsy
+
+	mov ecx, 0x100
+	sub dx, 7 ; port+0
+	rep insw
+	%if 0
+		if (err = ide_polling(channel, 1))
+            return err; // Polling, set error and exit if there is.
+         asm("pushw %es");
+         asm("mov %%ax, %%es" : : "a"(selector));
+         asm("rep insw" : : "c"(words), "d"(bus), "D"(edi)); // Receive Data.
+         asm("popw %es");
+         edi += (words*2);
+	%endif
+
 	cli
 	jmp $
+
+ata_useDevice:
+	push edx ; save device
+
+	movzx eax, dl
+	and al, 0x02
+
+	movzx ebx, dl
+	and bl, 0xfc
+	shl ebx, 1
+
+	mov dx, word[ata_devices+eax+ebx]
+
+ata_useDevice_pollWait:
+	add dx, 7 ; port+7
+	in al, dx
+	test al, 0x80
+	jnz ata_useDevice_pollWait
+
+	pop eax ; set slave bit
+	dec dx ; port+6
+	and al, 0x01
+	shl eax, 4
+
+	rol ecx, 8 ; get head
+
+	or al, cl
+	or al, 0xe0 ; AL=0xe0 | slave << 4 | head
+
+	out dx, al
+
+	sub dx, 4 ; port+2
+	mov al, 1 ; 1 sector
+	out dx, al
+
+	mov eax, ecx
+	mov ecx, 3
+ata_useDevice_lbaset:
+	shr eax, 8
+	inc dx ; port+3, port+4, port+5
+
+	out dx, al
+	loop ata_useDevice_lbaset
+	ret
 
 ata_fnshFunc:
 	cmp edx, "ATA "
@@ -237,5 +316,8 @@ ata_initFunc_pciData:
 
 ata_deviceCount:
 	db 0
+
+ata_readFunc_data:
+	db 0, 0, 0, 0, 0, 0
 
 ata_devices:

@@ -38,6 +38,6 @@ fileDescriptorTable:
 	db 0x01
 	; common/pci:
 	dw 0x0aa0
-	db 0x01
+	db 0x02
 fileDescriptorTable_end:
 	dd 10

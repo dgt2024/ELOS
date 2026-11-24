@@ -35,4 +35,4 @@ section .driver.pci vstart=0x80000000
 times 512 - ($ - $$) db 0
 section .driver.ata vstart=0x80000000
 %include "driver/pci/ata.asm"
-times 512 - ($ - $$) db 0
+times 1024 - ($ - $$) db 0

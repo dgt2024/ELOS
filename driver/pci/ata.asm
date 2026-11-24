@@ -55,7 +55,7 @@ ata_fnshFunc:
 	mov dh, 14
 	int 0x33
 	
-	mov ax, dx ; destination: PCI
+	mov ax, dx ; destination: LDFS
 	mov dh, 16
 	int 0x33
 

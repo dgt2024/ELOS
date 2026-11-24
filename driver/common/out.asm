@@ -17,7 +17,7 @@ out_sendFunc:
 	jz out_sendFunc_err
 
 	mov esi, edi
-	mov edi, 0xb8000
+	mov edi, dword[out_cursor]
 
 	cld
 out_sendFunc_loop:
@@ -32,19 +32,18 @@ out_sendFunc_loop:
 	stosb
 	loop out_sendFunc_loop
 
+	mov dword[out_cursor], edi
+
 	clc
 	ret
 
 out_sendFunc_newline:
-	sub edi, 0xb8000
+	mov dword[out_cursor], 0xb8f00
 
-	xor edx, edx
-	mov eax, edi
-	mov ebx, 40
-
-	div ebx
-
-	sub edi, edx
+	mov edi, 0xb8000
+	mov esi, 0xb80a0
+	mov ecx, 0xfa0
+	rep movsb ; move screen up
 	
 	clc
 	ret
@@ -52,6 +51,9 @@ out_sendFunc_newline:
 out_sendFunc_err:
 	stc
 	ret
+
+out_cursor:
+	dd 0xb8f00
 
 out_ctrlFunc:
 	mov byte[out_byteConfig], cl

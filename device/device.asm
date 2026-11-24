@@ -146,5 +146,5 @@ searchDevice_found:
 
 endDevice:
 	movzx eax, ax
-	mov byte[0x100000-8+eax*8], 0
+	mov byte[0x100000+eax*8], 0
 	ret

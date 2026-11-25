@@ -75,7 +75,7 @@ kernelProcMain_initLoop:
 	pop eax
 
 	mov edi, listCSVFilename_end
-
+listCSVLoop:
 	push eax
 	push edi
 
@@ -94,8 +94,7 @@ kernelProcMain_initLoop:
 	pop edi
 	pop eax
 
-	mov edi, listCSVFilename_end
-
+	push eax
 	push eax
 	push edi
 
@@ -109,6 +108,7 @@ kernelProcMain_initLoop:
 	push ebp ; save address
 
 	not ecx ; get size of filename
+
 	mov dh, 13
 	mov bl, 2
 	int 0x34
@@ -122,9 +122,22 @@ kernelProcMain_initLoop:
 	mov bl, 1
 
 	pushf
+	push eax
+	push edi
 	mov dh, 17
 	int 0x34
+	pop edi
+	pop eax
 	popf
+
+	mov ecx, 0xffffffff
+	mov al, ';'
+	repne scasb ; find next disk address
+
+	pop eax
+
+	cmp byte[edi], 0
+	jne listCSVLoop
 
 	sti
 	jmp $

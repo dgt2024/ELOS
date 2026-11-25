@@ -29,6 +29,14 @@ __pit_name:
 	db "pit.sys"
 times 8 - ($ - __pit_name) db 0
 
+	dw __ps2_end - __ps2
+	db 01010011b
+	db 8
+	dd _LSECTOR+4
+__ps2_name:
+	db "ps2.sys"
+times 8 - ($ - __ps2_name) db 0
+
 __mod_end:
 times 512*2 - ($ - $$) db 0
 
@@ -43,4 +51,11 @@ __pit:
 %include "module/common/pit.asm"
 __pit_end:
 
-times 512*4 - ($ - $$) db 0
+times 512 - ($ - $$) db 0
+
+section .driver.ps2 vstart=0x80000000
+__ps2:
+%include "module/common/ps2.asm"
+__ps2_end:
+
+times 512 - ($ - $$) db 0

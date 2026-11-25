@@ -86,13 +86,17 @@ ldfs_readFunc_strcmp:
 
 	inc edi
 
-	cmp byte[edi], ';'
-	je ldfs_readFunc_ends
+	cmp byte[edi-1], ';'
+	je ldfs_readFunc_end
 
-	cmp byte[edi], 0
+	cmp byte[edi-1], 0
 	jne ldfs_readFunc_loop
-
 ldfs_readFunc_end:
+	mov ecx, 0xffffffff
+	mov al, 0
+	repne scasb
+	dec edi
+
 	movzx ecx, word[esi]
 	dec ecx
 	shr ecx, 9
@@ -112,10 +116,6 @@ ldfs_readFunc_readLoop:
 	mov dword[ldfs_pwd], eax
 	loop ldfs_readFunc_readLoop
 	ret
-
-ldfs_readFunc_ends:
-	cli
-	jmp $
 
 ldfs_readFunc_ptr:
 	dd 0

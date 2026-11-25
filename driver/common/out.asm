@@ -26,6 +26,9 @@ out_sendFunc_loop:
 	cmp al, 0x0a
 	je out_sendFunc_newline
 
+	cmp al, 0
+	je out_sendFunc_end
+
 	stosb
 
 	mov al, byte[out_byteConfig]
@@ -45,6 +48,10 @@ out_sendFunc_newline:
 	mov ecx, 0xfa0
 	rep movsb ; move screen up
 	
+	clc
+	ret
+
+out_sendFunc_end:
 	clc
 	ret
 

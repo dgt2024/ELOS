@@ -9,6 +9,7 @@ times 0x20 - ($ - ldfs_fdt) db 0
 	ret
 
 ldfs_readFunc:
+	cli
 	mov eax, dword[0x7df8]
 	mov dword[ldfs_pwd], eax
 
@@ -26,10 +27,9 @@ ldfs_readFunc:
 	int 0x33
 	popad
 
-	xor edx, edx
 ldfs_readFunc_loop:
+	mov dword[ldfs_readFunc_ptr], edi
 	mov esi, ldfs_free
-	add esi, edx
 
 	movzx ebp, word[ldfs_pwd+4]
 	lea ebp, [esi+ebp]
@@ -38,18 +38,20 @@ ldfs_readFunc_loop:
 	mov al, '/'
 	repne scasb
 
-	jne ldfs_readFunc_fileItem
+	je ldfs_readFunc_fileItem
 
+	mov bl, 0
+
+ldfs_readFunc_fileItem:
 	sub edx, ecx
 	sub edi, edx
-	dec edx ; size of first name
-
+	dec edx
 ldfs_readFunc_findLoop:
 	cmp byte[esi+3], dl
 	jne ldfs_readFunc_nextItem
-
+	
 	test byte[esi+2], bl
-	jz ldfs_readFunc_findLoop
+	jnz ldfs_readFunc_nextItem
 
 	pushad
 	mov edi, ldfs_free+512
@@ -66,7 +68,6 @@ ldfs_readFunc_findLoop:
 
 	mov ecx, edx
 	mov esi, ldfs_free+512
-
 ldfs_readFunc_strcmp:
 	lodsb
 
@@ -75,7 +76,6 @@ ldfs_readFunc_strcmp:
 
 	loop ldfs_readFunc_strcmp
 
-	mov esi, ldfs_free+512
 	mov edi, ldfs_free
 	mov ecx, 512
 	rep movsb
@@ -85,17 +85,21 @@ ldfs_readFunc_strcmp:
 	pop edi
 
 	add edi, edx
-
-	cmp byte[edi], 0
-	je ldfs_readFunc_end
+	mov esi, ldfs_free
 
 	inc edi
-	jmp ldfs_readFunc_loop
-	
+
+	cmp byte[edi], 0
+	jne ldfs_readFunc_loop
+
 ldfs_readFunc_end:
-	mov edi, ldfs_free
-	cli
-	jmp $
+	mov esi, ldfs_free
+	mov ecx, 512
+	rep movsb
+	ret
+
+ldfs_readFunc_ptr:
+	dd 0
 
 ldfs_readFunc_nextItem_ESIPUSH:
 	pop esi
@@ -105,12 +109,8 @@ ldfs_readFunc_nextItem:
 	cmp esi, ebp
 	ja ldfs_readFunc_unexistent
 
-	cmp esi, ldfs_free+508
-	jb ldfs_readFunc_findLoop
-
-ldfs_readFunc_fileItem:
-	mov bl, 0
-	jmp ldfs_readFunc_loop
+	cmp dword[esi], 0xffffffff
+	jne ldfs_readFunc_findLoop
 
 ldfs_readFunc_nextPage:
 	cli

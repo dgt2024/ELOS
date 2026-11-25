@@ -125,6 +125,14 @@ kernelProcMain_initLoop:
 	mov bl, 2
 	int 0x33
 
+	mov edi, listCSVFilename_end
+	mov ecx, 512
+	mov ax, 0
+	mov dh, 13
+	mov bl, 6
+	int 0x33
+
+	mov edi, listCSVFilename_end
 	cli
 	jmp $
 

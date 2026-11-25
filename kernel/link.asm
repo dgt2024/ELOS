@@ -166,24 +166,6 @@ mapContainer_error:
 	stc
 	ret
 
-mapPage2:
-	and ax, 0xf000
-	or ax, 0x0003
-	mov dword[0x4ff0], eax
-
-	mov edx, 0x3fe000
-	int 0x30
-	ret
-
-mapPage1:
-	and ax, 0xf000
-	or ax, 0x0003
-	mov dword[0x4ff8], eax
-
-	mov edx, 0x3ff000
-	int 0x30
-	ret
-
 mapDriver:
 	movzx eax, ax
 

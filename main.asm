@@ -1,4 +1,4 @@
-_LSECTOR equ 13
+_LSECTOR equ 14
 section .boot vstart=0x7c00
 use16
 %include "boot/boot.asm"
@@ -17,7 +17,7 @@ times 504 - ($ - $$) db 0
 %include "driver/driver.asm"
 %include "driver/syscall.asm"
 %include "device/device.asm"
-times 512 * 5 - ($ - $$) db 0
+times 512 * 6 - ($ - $$) db 0
 section .program vstart=0x40001000
 %include "device/proc.asm"
 times 512 - ($ - $$) db 0

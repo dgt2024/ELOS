@@ -18,7 +18,7 @@ __mod:
 	db 8
 	dd _LSECTOR+2
 __list_name:
-	db "list.csv"
+	db "list.ll"
 times 8 - ($ - __list_name) db 0
 
 	dw __pit_end - __pit
@@ -38,6 +38,7 @@ __list_end:
 
 times 512*3 - ($ - $$) db 0
 
+section .driver.pit vstart=0x80000000
 __pit:
 %include "module/common/pit.asm"
 __pit_end:

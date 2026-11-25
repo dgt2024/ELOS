@@ -73,6 +73,5 @@ kernelABIDriver_lookup:
 	dd searchDevice
 	dd createDevice
 	dd endDevice
-	;
-	dd mapPage1
-	dd mapPage2
+	dd loadDriver
+	dd getRawAddress

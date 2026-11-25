@@ -2,74 +2,14 @@ kernelProcMain:
 	; note drivers were loaded from file descriptor table
 	; Setup terminal output
 	mov esi, fileDescriptorTable+6 ; 3rd index on
-
 kernelProcMain_initLoop:
-	push esi ; Save FDT entry
-
-	mov al, 2 ; allocates DDHNDL + PD + PT
-	mov dh, 0
-	int 0x33
-
-	push edx ; Save DDHNDL for later
-
-	mov eax, edx
-	mov dh, 9
-	int 0x33
-
-	mov ebp, edx
-
-	mov eax, dword[esp]
-
-	mov dh, 18
-	int 0x33
-
-	movzx esi, dword[esp+4]
 	movzx eax, word[esi]
 	shl eax, 4
+	mov bl, byte[esi+2]
 
+	push esi
 	mov dh, 17
 	int 0x33
-
-	movzx eax, word[esi]
-	shl eax, 4
-
-	and ax, 0x0fff
-
-	movzx ecx, byte[esi+2]
-	shl ecx, 9
-
-	mov esi, 0x3ff000
-	add esi, eax
-
-	mov edi, 0x3fe000
-	rep movsb
-
-	mov eax, dword[esp]
-	add eax, 0x1000 ; page directory
-
-	mov dh, 17
-	int 0x33
-
-	mov eax, dword[esp]
-	add eax, 0x2000 ; page table
-	or ax, 0x0001
-	mov dword[0x3ff000], eax
-
-	mov dh, 17
-	int 0x33
-
-	mov eax, dword[esp]
-	or ax, 0x0003 ; code (R/W)
-	mov dword[0x3ff000], eax
-
-	mov ax, bp
-	mov dh, 10
-	int 0x33
-
-	mov word[0x80000ffc], bp
-	call 0x80000020
-
-	pop edx
 	pop esi
 
 	add esi, 3
@@ -119,20 +59,64 @@ kernelProcMain_initLoop:
 
 	mov ax, dx
 
-	mov edi, listCSVLoader
+	push eax
+	mov edi, listCSVFilename
 	mov ecx, listCSVFilename_end - listCSVFilename
 	mov dh, 13
 	mov bl, 2
 	int 0x33
+	pop eax
 
 	mov edi, listCSVFilename_end
-	mov ecx, 512
-	mov ax, 0
-	mov dh, 13
-	mov bl, 6
+
+	push eax
+	push edi
+
+	mov ecx, 0xffffffff
+	mov al, 0
+	repne scasb ; find last reg
+
+	dec edi
+	mov eax, edi ; here should be the address of the driver
+
+	mov dh, 18
 	int 0x33
 
+	mov ebp, edx
+
+	pop edi
+	pop eax
+
 	mov edi, listCSVFilename_end
+
+	push eax
+	push edi
+
+	mov ecx, 0xffffffff
+	mov al, ';'
+	repne scasb ; find next disk address
+
+	mov edi, dword[esp]
+	mov eax, dword[esp+4]
+
+	push ebp ; save address
+
+	not ecx ; get size of filename
+	mov dh, 13
+	mov bl, 2
+	int 0x33
+
+	pop ebp
+
+	pop edi
+	pop eax
+
+	mov eax, ebp
+	mov bl, 1
+
+	mov dh, 17
+	int 0x33
+
 	cli
 	jmp $
 
@@ -170,10 +154,6 @@ bootStr:
 	db "Booting up ELOS7...", 10
 bootStr_end:
 
-listCSVLoader:
-	dd listCSVFilename
-	dd listCSVFilename_end
-
 listCSVFilename:
-	db "mod/list.csv", 0
+	db "mod/list.ll", 0
 listCSVFilename_end:

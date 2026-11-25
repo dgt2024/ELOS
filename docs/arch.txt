@@ -124,8 +124,8 @@ INT 0x33 Driver ABI
 	DH=14;	searchDevice
 	DH=15;	createDevice
 	DH=16;	endDevice
-	DH=17;	mapPage1
-	DH=18;	mapPage2
+	DH=17;	loadDriver
+	DH=18;	getRawAddress
 
 **PCI init structure**
 

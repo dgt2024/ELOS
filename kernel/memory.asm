@@ -121,3 +121,43 @@ initializeMemory_bitloop:
 	mov dword[0x608], 0 ; TID
 	mov dword[0x60c], 0 ; alloc memory
 	ret
+
+getRawAddress:
+	mov ebx, eax
+
+	shr ebx, 27
+	and bl, 0xf8
+	
+	mov edx, 0x200060
+	call getRawAddress_map
+
+	mov ebx, eax
+
+	shr ebx, 18
+	and bx, 0x0ff8
+
+	call getRawAddress_map
+
+	mov ebx, eax
+
+	shr ebx, 9
+	and bx, 0x0ff8
+	movzx ebx, bx
+
+	mov edx, dword[ebx+edx]
+	and dx, 0xf000
+
+	and eax, 0x0fff
+	add dx, ax
+	ret
+
+getRawAddress_map:
+	; get page directory
+	mov esi, dword[ebx+edx]
+	and si, 0xf000
+	or si, 0x0003
+	mov dword[0x4020], esi
+
+	mov edx, 0x204000 ; map here
+	int 0x30
+	ret

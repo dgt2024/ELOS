@@ -59,3 +59,88 @@ endDriver:
 endDriver_error:
 	stc
 	ret
+
+loadDriver:
+	mov dword[loadDriver_data], eax
+	mov byte[loadDriver_data+4], bl
+
+	mov al, 2 ; allocates DDHNDL + PD + PT
+	call pageAllocate
+
+	push edx ; Save DDHNDL address for later
+
+	mov eax, edx
+	call registerDriver
+
+	mov ebp, edx
+
+	mov eax, dword[esp]
+
+	and ax, 0xf000
+	or ax, 0x0003
+	mov dword[0x4010], eax
+
+	mov edx, 0x202000
+	int 0x30
+
+	mov eax, dword[loadDriver_data]
+
+	and ax, 0xf000
+	or ax, 0x0003
+	mov dword[0x4018], eax
+
+	mov edx, 0x203000
+	int 0x30
+
+	mov eax, dword[loadDriver_data]
+
+	and ax, 0x0fff
+
+	movzx ecx, byte[loadDriver_data+4]
+	shl ecx, 9
+
+	mov esi, 0x203000
+	add esi, eax
+
+	mov edi, 0x202000
+	rep movsb
+
+	mov eax, dword[esp]
+	add eax, 0x1000 ; page directory
+
+	and ax, 0xf000
+	or ax, 0x0003
+	mov dword[0x4018], eax
+
+	mov edx, 0x203000
+	int 0x30
+
+	mov eax, dword[esp]
+	add eax, 0x2000 ; page table
+	or ax, 0x0001
+	mov dword[0x203000], eax
+
+	and ax, 0xf000
+	or ax, 0x0003
+	mov dword[0x4018], eax
+
+	mov edx, 0x203000
+	int 0x30
+
+	mov eax, dword[esp]
+	or ax, 0x0003 ; code (R/W)
+	mov dword[0x203000], eax
+
+	mov ax, bp
+	call mapDriver
+
+	mov word[0x80000ffc], bp
+
+	call 0x80000020
+
+	pop edx
+	ret
+
+loadDriver_data:
+	dd 0
+	db 0

@@ -13,11 +13,10 @@ ldfs_readFunc:
 	mov eax, dword[0x7df8]
 	mov dword[ldfs_pwd], eax
 
-	mov ax, word[ldfs_disk]
+	mov ax, word[0x7dfc]
 	mov word[ldfs_pwd+4], ax
 
 	mov dword[ldfs_readFunc_ptr], edi
-	mov edi, dword[edi]
 
 	mov bl, 0x80
 
@@ -51,7 +50,10 @@ ldfs_readFunc_fileItem:
 ldfs_readFunc_findLoop:
 	cmp byte[esi+edx+8], 0
 	jne ldfs_readFunc_nextItem
-	
+
+	cmp byte[esi+edx+7], 0
+	je ldfs_readFunc_nextItem
+
 	test byte[esi+2], bl
 	jnz ldfs_readFunc_nextItem
 
@@ -65,7 +67,7 @@ ldfs_readFunc_strcmp:
 	lodsb
 
 	scasb
-	jne ldfs_readFunc_nextItem_ESIPUSH
+	jne ldfs_readFunc_nextItem_PUSH
 
 	loop ldfs_readFunc_strcmp
 
@@ -85,15 +87,12 @@ ldfs_readFunc_strcmp:
 	inc edi
 
 	cmp byte[edi], ';'
-	je ldfs_readFunc_end
+	je ldfs_readFunc_ends
 
 	cmp byte[edi], 0
 	jne ldfs_readFunc_loop
 
 ldfs_readFunc_end:
-	mov edi, dword[ldfs_readFunc_ptr]
-	mov edi, dword[edi+4] ; second index in FILE struct
-
 	movzx ecx, word[esi]
 	dec ecx
 	shr ecx, 9
@@ -114,11 +113,17 @@ ldfs_readFunc_readLoop:
 	loop ldfs_readFunc_readLoop
 	ret
 
+ldfs_readFunc_ends:
+	cli
+	jmp $
+
 ldfs_readFunc_ptr:
 	dd 0
 
-ldfs_readFunc_nextItem_ESIPUSH:
+ldfs_readFunc_nextItem_PUSH:
+	pop ecx
 	pop esi
+	pop edi
 ldfs_readFunc_nextItem:
 	add esi, 16
 

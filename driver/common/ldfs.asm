@@ -16,8 +16,11 @@ ldfs_readFunc:
 	mov ax, word[ldfs_disk]
 	mov word[ldfs_pwd+4], ax
 
+	mov dword[ldfs_readFunc_ptr], edi
+
 	mov bl, 0x80
 
+ldfs_readFunc_loop:
 	pushad
 	mov edi, ldfs_free
 	mov ecx, dword[ldfs_pwd]
@@ -27,8 +30,6 @@ ldfs_readFunc:
 	int 0x33
 	popad
 
-ldfs_readFunc_loop:
-	mov dword[ldfs_readFunc_ptr], edi
 	mov esi, ldfs_free
 
 	movzx ebp, word[ldfs_pwd+4]
@@ -47,27 +48,18 @@ ldfs_readFunc_fileItem:
 	sub edi, edx
 	dec edx
 ldfs_readFunc_findLoop:
-	cmp byte[esi+3], dl
+	cmp byte[esi+edx+8], 0
 	jne ldfs_readFunc_nextItem
 	
 	test byte[esi+2], bl
 	jnz ldfs_readFunc_nextItem
-
-	pushad
-	mov edi, ldfs_free+512
-	mov ecx, dword[esi+4]
-	mov ax, word[ldfs_disk]
-	mov dh, 13
-	mov bl, 2
-	int 0x33
-	popad
 
 	push edi
 	push esi
 	push ecx
 
 	mov ecx, edx
-	mov esi, ldfs_free+512
+	add esi, 8
 ldfs_readFunc_strcmp:
 	lodsb
 
@@ -76,26 +68,50 @@ ldfs_readFunc_strcmp:
 
 	loop ldfs_readFunc_strcmp
 
-	mov edi, ldfs_free
-	mov ecx, 512
-	rep movsb
-
 	pop ecx
 	pop esi
 	pop edi
+
+	mov eax, dword[esi+4]
+	mov dword[ldfs_pwd], eax
+
+	mov ax, word[esi]
+	mov word[ldfs_pwd+4], ax
 
 	add edi, edx
 	mov esi, ldfs_free
 
 	inc edi
 
+	cmp byte[edi], ';'
+	je ldfs_readFunc_end
+
 	cmp byte[edi], 0
 	jne ldfs_readFunc_loop
 
 ldfs_readFunc_end:
-	mov esi, ldfs_free
-	mov ecx, 512
-	rep movsb
+	mov ecx, 0
+	mov al, 0
+	repne scasb
+
+	movzx ecx, word[esi]
+	dec ecx
+	shr ecx, 9
+	inc ecx
+ldfs_readFunc_readLoop:
+	pushad
+	mov ecx, dword[ldfs_pwd]
+	mov ax, word[ldfs_disk]
+	mov dh, 13
+	mov bl, 2
+	int 0x33
+	popad
+
+	add edi, 508 ; next sector
+
+	mov eax, dword[edi]
+	mov dword[ldfs_pwd], eax
+	loop ldfs_readFunc_readLoop
 	ret
 
 ldfs_readFunc_ptr:

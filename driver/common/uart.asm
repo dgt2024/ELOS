@@ -97,6 +97,10 @@ uart_sendFunc_isEmpty:
 	sub dx, 5 ; port+0
 
 	lodsb
+
+	cmp al, 0
+	je uart_sendFunc_end
+
 	out dx, al
 
 	add dx, 5 ; port+5
@@ -105,6 +109,7 @@ uart_sendFunc_isEmpty:
 	je uart_endPreamble
 
 	loop uart_sendFunc_isEmpty
+uart_sendFunc_end:
 
 	clc
 	ret

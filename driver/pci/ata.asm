@@ -217,18 +217,7 @@ ata_waitBsy:
 	mov ecx, 0x100
 	sub dx, 7 ; port+0
 	rep insw
-	%if 0
-		if (err = ide_polling(channel, 1))
-            return err; // Polling, set error and exit if there is.
-         asm("pushw %es");
-         asm("mov %%ax, %%es" : : "a"(selector));
-         asm("rep insw" : : "c"(words), "d"(bus), "D"(edi)); // Receive Data.
-         asm("popw %es");
-         edi += (words*2);
-	%endif
-
-	cli
-	jmp $
+	ret
 
 ata_useDevice:
 	push edx ; save device

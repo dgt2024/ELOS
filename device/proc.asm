@@ -112,12 +112,15 @@ kernelProcMain_initLoop:
 	mov bl, 6
 	int 0x33
 
+	; read mod/ldfs
 	mov eax, "LDFS"
 	mov dh, 14
 	int 0x33
 
-	mov ax, dx ; destination: PCI
+	mov ax, dx
 
+	mov edi, listCSVFilename
+	mov ecx, listCSVFilename_end - listCSVFilename
 	mov dh, 13
 	mov bl, 2
 	int 0x33
@@ -158,3 +161,7 @@ str_end:
 bootStr:
 	db "Booting up ELOS7...", 10
 bootStr_end:
+
+listCSVFilename:
+	db "mod/list.csv", 0
+listCSVFilename_end:

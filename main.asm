@@ -1,11 +1,14 @@
+_LSECTOR equ 13
 section .boot vstart=0x7c00
 use16
 %include "boot/boot.asm"
 %include "boot/data.asm"
 use32
 %include "kernel/kernel.asm"
-times 510 - ($ - $$) db 0
-	dw 0xaa55
+times 504 - ($ - $$) db 0
+	dd _LSECTOR				; 0x7df8
+	dw __root_end - __root	; 0x7dfc
+	dw 0xaa55				; 0x7dfe
 %include "kernel/memory.asm"
 %include "kernel/container.asm"
 %include "kernel/procedure.asm"
@@ -36,3 +39,4 @@ times 512 - ($ - $$) db 0
 section .driver.ata vstart=0x80000000
 %include "driver/pci/ata.asm"
 times 1024 - ($ - $$) db 0
+%include "module/module.asm"

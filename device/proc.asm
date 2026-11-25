@@ -119,7 +119,7 @@ kernelProcMain_initLoop:
 
 	mov ax, dx
 
-	mov edi, listCSVFilename
+	mov edi, listCSVLoader
 	mov ecx, listCSVFilename_end - listCSVFilename
 	mov dh, 13
 	mov bl, 2
@@ -169,6 +169,10 @@ str_end:
 bootStr:
 	db "Booting up ELOS7...", 10
 bootStr_end:
+
+listCSVLoader:
+	dd listCSVFilename
+	dd listCSVFilename_end
 
 listCSVFilename:
 	db "mod/list.csv", 0

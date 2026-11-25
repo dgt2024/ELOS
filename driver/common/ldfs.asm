@@ -17,6 +17,7 @@ ldfs_readFunc:
 	mov word[ldfs_pwd+4], ax
 
 	mov dword[ldfs_readFunc_ptr], edi
+	mov edi, dword[edi]
 
 	mov bl, 0x80
 
@@ -90,9 +91,8 @@ ldfs_readFunc_strcmp:
 	jne ldfs_readFunc_loop
 
 ldfs_readFunc_end:
-	mov ecx, 0
-	mov al, 0
-	repne scasb
+	mov edi, dword[ldfs_readFunc_ptr]
+	mov edi, dword[edi+4] ; second index in FILE struct
 
 	movzx ecx, word[esi]
 	dec ecx

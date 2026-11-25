@@ -67,7 +67,6 @@ uart_skip:
 	add edi, 2
 	cmp edi, uart_devtableEnd
 	jb uart_findCOMPorts
-	sti
 	ret
 
 uart_sendFunc:

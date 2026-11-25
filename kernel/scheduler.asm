@@ -1,14 +1,17 @@
 startScheduler:
-	mov ecx, 0x4000
+	mov ecx, 0x8000
 	mov edi, 0x10000
-
 startScheduler_loop:
 	xor eax, eax
 
 	repe scasw
 
+	je startScheduler
+
 	mov ax, word[edi-2] ; get procedure PDHNDL
 	call getRawContainer
+
+	mov word[0x610], cx
 
 	and dx, 0xf000
 	push edx
@@ -53,10 +56,36 @@ startScheduler_ring1:
 	mov esp, 0x570
 	iretd
 
+startScheduler_afterYield:
+	dec ecx
 	test ecx, ecx
 	jz startScheduler
 	jmp startScheduler_loop
 
 yieldScheduler:
-	cli
-	jmp $
+	push eax
+	mov eax, dword[esp+4]
+	mov dword[0x200020], eax ; EIP
+
+	mov eax, dword[esp+12]
+	mov dword[0x200024], eax ; EFLAGS
+
+	mov eax, dword[esp+16]
+	mov dword[0x20000c], eax ; ESP
+	pop eax
+
+	mov esp, 0x200000
+	pushad
+
+	mov al, 0x20
+	out 0x20, al
+
+	inc dword[0x20003c]
+
+	movzx edi, word[0x50c]
+
+	mov ecx, 0x4000
+	sub ecx, edi
+
+	lea edi, [0x10002+edi*2]
+	jmp startScheduler_afterYield

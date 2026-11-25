@@ -10,7 +10,6 @@ times 0x20 - ($ - ldfs_fdt) db 0
 	ret
 
 ldfs_readFunc:
-	cli
 	mov eax, dword[0x7df8]
 	mov dword[ldfs_pwd], eax
 

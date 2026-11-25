@@ -41,7 +41,7 @@ __mod_end:
 times 512*2 - ($ - $$) db 0
 
 __list:
-incbin "module/list.csv"
+incbin "module/list.ll"
 __list_end:
 
 times 512*3 - ($ - $$) db 0

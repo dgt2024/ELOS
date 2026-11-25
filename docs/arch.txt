@@ -7,14 +7,22 @@ BYTE		0x60c		RAM block count			>> BEFORE initializeMemory();
 DWORD		0x608		TID
 DWORD		0x60c		Total Allocated Memory
 WORD		0x610		PID
+WORD		0x700		Interrupt Device
+BYTE		0x702		Interrupt # 
 QWORD[]		0x800		IDT
-DWORD[]		0x5000		PD
+WORD[]		0x3000		Interrupt Drivers
+DWORD[]		0x4000		PD2
+DWORD[]		0x5000		PD1
 DWORD[]		0x6000		PT <1MB ident.
+BYTE[]		0x7C00		Kernel
+BYTE[]		0x9000		KPROC
+SECTOR[]	0xA000		Boot drivers (FDT)
 PDHNDL[]	0x10000		Processes
 STRUCT[]	0x20000		Container array
 STRUCT[]	0x100000	Device array
-STRUCT[]	0x180000	Driver array
-STRUCT[]	0x1e0000	KABM
+DWORD[]		0x180000	Driver array	
+STRUCT[]	0x1c0000	KABM
+WORD[]		0x1e0000	Device per-ID array
 
 Global Functions:
 kernel/memory.asm
@@ -44,6 +52,8 @@ device/device.asm
  - createDevice -> AL=TYPE,EBX=CINFO -> DX=DVHNDL : OWNER CURRENT
  - searchDevice -> EAX=CINFO -> DX=DVHNDL
  - endDevice -> AX=DVHNDL -> NO OUTPUT : NO STATUS
+kernel/interrupt.asm
+ - registerInterrupt -> AL=IRQ -> NO OUTPUT : NO STATUS
 
 **HNDL structure**:
 
@@ -128,6 +138,7 @@ INT 0x34 Driver ABI
 	DH=16;	endDevice
 	DH=17;	loadDriver
 	DH=18;	getRawAddress
+	DH=19;	registerInterrupt
 
 **PCI init structure**
 

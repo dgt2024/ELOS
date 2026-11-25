@@ -78,3 +78,4 @@ kernelABIDriver_lookup:
 	dd endDevice
 	dd loadDriver
 	dd getRawAddress
+	dd registerInterrupt

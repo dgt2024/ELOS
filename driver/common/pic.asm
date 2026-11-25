@@ -1,6 +1,6 @@
 ; Driver for terminal output
 pic_fdt:
-	dd 0, 0, 0, 0, 0, 0, 0, 0
+	dd 0, 0, pic_readFunc, 0, 0, pic_writeFunc, 0, 0
 times 0x20 - ($ - pic_fdt) db 0
 	mov al, 0x11
 	out 0x20, al
@@ -24,10 +24,23 @@ times 0x20 - ($ - pic_fdt) db 0
 	mov dh, 13
 	mov bl, 6
 	int 0x34
-	
-	mov dh, 11
+
+	mov al, 0x00
+	mov ebx, "PIC "
+	mov dh, 15
 	int 0x34
+
+	mov ax, dx
+	mov word[0x700], ax
 	ret
+
+pic_readFunc:
+	cli
+	jmp $
+
+pic_writeFunc:
+	cli
+	jmp $
 
 pic_initStr:
 	db "Initializing PIC...", 10

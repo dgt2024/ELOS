@@ -1,6 +1,11 @@
 pit_fdt:
 	dd 0, 0, 0, 0, 0, 0, 0, 0
 times 0x20 - ($ - pit_fdt) db 0
+	; set up channel 0 to yield
+	mov dword[0x902], 0xae000008
+	mov word[0x900], yieldScheduler
+	int 0x31
+
 	mov al, 0x34
 	out 0x43, al
 	mov al, 0xa9

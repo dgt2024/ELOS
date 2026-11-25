@@ -1,6 +1,5 @@
 start:
 	cli
-
 	push dx 
 	; Store TSC clock to logging stats (as soon as possible)
 	rdtsc

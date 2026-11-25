@@ -14,6 +14,7 @@ times 504 - ($ - $$) db 0
 %include "kernel/procedure.asm"
 %include "kernel/link.asm"
 %include "kernel/scheduler.asm"
+%include "kernel/interrupt.asm"
 %include "driver/driver.asm"
 %include "driver/syscall.asm"
 %include "device/device.asm"

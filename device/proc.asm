@@ -7,21 +7,14 @@ kernelProcMain_initLoop:
 	shl eax, 4
 	mov bl, byte[esi+2]
 
-	pushf
 	push esi
 	mov dh, 17
 	int 0x34
 	pop esi
-	popf
 
 	add esi, 3
 	cmp esi, fileDescriptorTable_end
 	jb kernelProcMain_initLoop
-
-	; set up channel 0 to yield
-	mov dword[0x902], 0xae000008
-	mov word[0x900], yieldScheduler
-	int 0x31
 
 	rdtsc
 	sub eax, dword[0x600]
@@ -121,14 +114,12 @@ listCSVLoop:
 	mov eax, ebp
 	mov bl, 1
 
-	pushf
 	push eax
 	push edi
 	mov dh, 17
 	int 0x34
 	pop edi
 	pop eax
-	popf
 
 	mov ecx, 0xffffffff
 	mov al, ';'

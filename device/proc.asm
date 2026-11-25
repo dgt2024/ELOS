@@ -9,7 +9,7 @@ kernelProcMain_initLoop:
 
 	push esi
 	mov dh, 17
-	int 0x33
+	int 0x34
 	pop esi
 
 	add esi, 3
@@ -37,11 +37,11 @@ kernelProcMain_initLoop:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x33
+	int 0x34
 
 	mov eax, "OUT "
 	mov dh, 14
-	int 0x33
+	int 0x34
 
 	mov ax, dx ; destination: PCI
 
@@ -50,12 +50,12 @@ kernelProcMain_initLoop:
 	mov ecx, bootStr_end - bootStr
 	mov dh, 13
 	mov bl, 6
-	int 0x33
+	int 0x34
 
 	; read mod/ldfs
 	mov eax, "LDFS"
 	mov dh, 14
-	int 0x33
+	int 0x34
 
 	mov ax, dx
 
@@ -64,7 +64,7 @@ kernelProcMain_initLoop:
 	mov ecx, listCSVFilename_end - listCSVFilename
 	mov dh, 13
 	mov bl, 2
-	int 0x33
+	int 0x34
 	pop eax
 
 	mov edi, listCSVFilename_end
@@ -80,7 +80,7 @@ kernelProcMain_initLoop:
 	mov eax, edi ; here should be the address of the driver
 
 	mov dh, 18
-	int 0x33
+	int 0x34
 
 	mov ebp, edx
 
@@ -104,7 +104,7 @@ kernelProcMain_initLoop:
 	not ecx ; get size of filename
 	mov dh, 13
 	mov bl, 2
-	int 0x33
+	int 0x34
 
 	pop ebp
 
@@ -115,9 +115,8 @@ kernelProcMain_initLoop:
 	mov bl, 1
 
 	mov dh, 17
-	int 0x33
+	int 0x34
 
-	cli
 	jmp $
 
 intToStr:

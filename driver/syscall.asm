@@ -1,16 +1,19 @@
 kernelABIStart:
-	; INT 0x30 Update Page 0x30
+	; INT 0x30 Update Page
 	mov dword[0x982], 0xae000008
 	mov word[0x980], kernelABIUpdatePage
-	; INT 0x31 Update IDT 0x31
+	; INT 0x31 Update IDT
 	mov dword[0x98a], 0xae000008
 	mov word[0x988], kernelABIUpdateIDT
-	; INT 0x32 Update CR3 0x31
+	; INT 0x32 Update CR3
 	mov dword[0x992], 0xae000008
 	mov word[0x990], kernelABIUpdateCR3
-	; INT 0x33 Driver Functions
-	mov dword[0x99a], 0xae000019
-	mov word[0x998], kernelABIDriver
+	; INT 0x33 Yield
+	mov dword[0x99a], 0xae000008
+	mov word[0x998], yieldScheduler
+	; int 0x34 Driver Functions
+	mov dword[0x9a2], 0xae000019
+	mov word[0x9a0], kernelABIDriver
 	ret
 
 kernelABIUpdatePage:

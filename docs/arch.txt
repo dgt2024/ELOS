@@ -106,7 +106,8 @@ All functions receive a pointer and size as arguments
 INT 0x30 Updates Page at EDX
 INT 0x31 Updates IDT
 INT 0x32 Updates CR3 (All pages)
-INT 0x33 Driver ABI
+INT 0x33 Yields Scheduler
+INT 0x34 Driver ABI
 	DH=0;	pageAllocate
 	DH=1;	pageFree
 	DH=2;	registerContainer

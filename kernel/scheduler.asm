@@ -56,3 +56,7 @@ startScheduler_ring1:
 	test ecx, ecx
 	jz startScheduler
 	jmp startScheduler_loop
+
+yieldScheduler:
+	cli
+	jmp $

@@ -17,7 +17,7 @@ idtTable:
 fileDescriptorTable:
 	; kernel:
 	dw 0x07e0
-	db 0x05
+	db 0x06
 	; kernelproc:
 	dw 0x0900
 	db 0x01
@@ -40,4 +40,3 @@ fileDescriptorTable:
 	dw 0x0aa0
 	db 0x02
 fileDescriptorTable_end:
-	dd 10

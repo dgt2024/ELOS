@@ -12,16 +12,37 @@ sendNotification:
 	jae sendNotification_error
 
 	movzx edx, byte[0x204052]
-	mov byte[0x204100+edx*4], bl
-	mov byte[0x204101+edx*4], cl
-	shr ecx, 8
-	mov word[0x204102+edx*4], cx
+	mov dword[0x204100+edx*4], ecx
+	mov byte[0x204103+edx*4], bl
 
 	inc byte[0x204052]
-
 	clc
 	ret
 
 sendNotification_error:
+	stc
+	ret
+
+readNotification:
+	cmp byte[0x200052], 0
+	je readNotification_none
+
+	mov ecx, dword[0x200100]
+	mov bl, byte[0x200103]
+
+	and ecx, 0x00ffffff
+
+	push ecx
+	movzx ecx, byte[0x200052]
+	mov edi, 0x200100
+	mov esi, 0x200104
+	rep movsd
+	pop ecx
+
+	dec byte[0x200052]
+	clc
+	ret
+
+readNotification_none:
 	stc
 	ret

@@ -57,6 +57,7 @@ kernel/interrupt.asm
  - registerInterrupt -> AL=IRQ -> NO OUTPUT : NO STATUS
 kernel/notification.asm
  - sendNotification -> AX=PDHNDL,BL=TYPE,ECX=DATA 24b -> NO OUTPUT
+ - readNotification -> NO INPUT -> AL=TYPE,EBX=DATA 24b
 
 **HNDL structure**:
 
@@ -143,6 +144,7 @@ INT 0x34 Driver ABI
 	DH=18;	getRawAddress
 	DH=19;	registerInterrupt
 	DH=20;	sendNotification
+	DH=21;	readNotification
 
 **PCI init structure**
 

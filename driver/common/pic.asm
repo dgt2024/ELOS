@@ -44,7 +44,6 @@ pic_readFunc:
 	bsf ebx, eax
 	add bl, 0x20
 	mov byte[0x702], bl
-	cli
 	ret
 
 pic_writeFunc:

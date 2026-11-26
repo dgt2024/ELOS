@@ -50,7 +50,7 @@ startScheduler_ring1:
 	mov fs, ax
 	mov gs, ax
 
-	mov esp, 0x200020
+	mov esp, 0x200000
 	popad
 
 	mov esp, 0x570
@@ -74,7 +74,7 @@ yieldScheduler:
 	mov dword[0x20000c], eax ; ESP
 	pop eax
 
-	mov esp, 0x200000
+	mov esp, 0x200020
 	pushad
 
 	mov al, 0x20

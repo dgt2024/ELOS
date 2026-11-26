@@ -6,9 +6,6 @@ times 0x20 - ($ - uart_fdt) db 0
 uart_main:
 	mov edi, uart_devtable
 	mov ebx, "COM1"
-
-	cld
-	cli
 uart_findCOMPorts:
 	mov dx, word[edi]
 

@@ -132,9 +132,48 @@ listCSVLoop:
 
 	cmp byte[edi], 0
 	jne listCSVLoop
-
 	sti
-	jmp $
+
+	mov eax, "OUT "
+	mov dh, 14
+	int 0x34
+
+	mov word[shellDevice], dx ; destination: OUT
+
+shellLoop_main:
+	mov edi, shell
+	mov ecx, shell_end - shell
+	mov ax, word[shellDevice]
+	mov dh, 13
+	mov bl, 6
+	int 0x34
+
+shellLoop:
+	sti
+	mov dh, 21
+	int 0x34
+	jc shellLoop
+
+	cmp bl, 0x10
+	je shellLoop_keyDown
+	jmp shellLoop
+
+shellLoop_keyDown:
+	cmp ch, 0x0a
+	je shellLoop_main
+
+	mov byte[shellStr], ch
+
+	mov edi, shellStr
+	mov ecx, 1
+	mov ax, word[shellDevice]
+	mov dh, 13
+	mov bl, 6
+	int 0x34
+	jmp shellLoop
+
+shellDevice:
+	dw 0
 
 intToStr:
 	rol eax, 4
@@ -159,6 +198,13 @@ intToStr_letter:
 	pop eax
 	loop intToStr
 	ret
+
+shell:
+	db 10, "ELOS7> "
+shell_end:
+
+shellStr:
+	db 0
 
 str:
 	db "File Table Initialized in 0x"

@@ -49,8 +49,7 @@ out_sendFunc_loop:
 out_sendFunc_tab:
 	; todo: fix this
 	add dword[out_cursor], 2
-	clc
-	ret
+	loop out_sendFunc_loop
 
 out_sendFunc_backspace:
 	cmp dword[out_cursor], 0xb8f00
@@ -61,19 +60,23 @@ out_sendFunc_backspace:
 	mov word[edi], 0x0000	
 
 out_sendFunc_backspaceSkip:
-	clc
-	ret
+	loop out_sendFunc_loop
 
 out_sendFunc_newline:
 	mov dword[out_cursor], 0xb8f00
 
+	push ecx
+	push esi
 	mov edi, 0xb8000
 	mov esi, 0xb80a0
 	mov ecx, 0xfa0
 	rep movsb ; move screen up
-	
-	clc
-	ret
+	pop esi
+	pop ecx
+
+	mov edi, 0xb8f00
+
+	loop out_sendFunc_loop
 
 out_sendFunc_end:
 	clc

@@ -15,6 +15,7 @@ registerInterrupt_err:
 	ret
 
 IRQCall:
+	cli
 	pushad
 	mov ax, word[0x700]
 	mov bl, 2

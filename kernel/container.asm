@@ -16,7 +16,7 @@ registerContainer_iterate:
 	add esi, 6
 	
 	cmp esi, 0xa0000
-	jae registerContainer_err
+	jae registerContainer_error
 	
 	test ax, ax
 	jne registerContainer_iterate
@@ -26,9 +26,9 @@ registerContainer_iterate:
 	mov dword[esi-0x04], edi
 	clc ; Success
 	ret
-	
-registerContainer_err:
-	stc ; Error
+
+registerContainer_error:
+	stc
 	ret
 	
 getRawContainer:
@@ -37,12 +37,8 @@ getRawContainer:
 	; Null flags mean non-existent
 	mov dx, word[eax*8+0x1fff8] ; Container.flags
 	test dx, dx
-	jz getRawContainer_error
+	jz generalError
 	
 	mov edx, dword[eax*8+0x1fffc] ; Container.pointer
 	clc ; Success
-	ret
-	
-getRawContainer_error:
-	stc ; Error
 	ret

@@ -99,6 +99,8 @@ ps2_secondCtrl:
 	mov al, ah
 	out 0x60, al
 
+	in al, 0x60
+
 	mov edi, ps2_initStr
 	mov ecx, ps2_initStr_end - ps2_initStr
 	mov ax, 0 ; log

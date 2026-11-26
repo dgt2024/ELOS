@@ -14,8 +14,6 @@ kernelABIStart:
 	; INT 0x34 Driver ABI
 	mov dword[0x9a2], 0xae000019
 	mov word[0x9a0], kernelABIDriver
-	; INT 0x35 Ring 1 ABI
-
 	ret
 
 kernelABIUpdatePage:
@@ -53,12 +51,9 @@ kernelABIDriver:
 
 	movzx edx, dh
 	call dword[kernelABIDriver_lookup+edx*4]
-
+	pushfd
+	pop dword[esp+8]
 	iretd
-
-kernelABISkip:
-	cli
-	jmp $
 
 kernelABIDriver_lookup:
 	dd pageAllocate
@@ -82,3 +77,4 @@ kernelABIDriver_lookup:
 	dd getRawAddress
 	dd registerInterrupt
 	dd sendNotification
+	dd readNotification

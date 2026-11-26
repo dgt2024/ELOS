@@ -1,0 +1,3 @@
+https://wiki.osdev.org/Memory_Map_(x86)#Extended_Memory_(%3E_1_MiB):~:text=1-,%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F,%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F%3F,-Possible
+
+https://wiki.osdev.org/PCI_IDE_Controller#Read/Write_From_ATA_Drive:~:text=%2F%2F%20%28II%29%20See%20if%20drive%20supports%20DMA%20or%20not%3B%20dma%20%3D%200%3B%20%2F%2F%20We%20don%27t%20support%20DMA

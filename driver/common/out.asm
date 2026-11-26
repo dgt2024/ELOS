@@ -23,6 +23,12 @@ out_sendFunc:
 out_sendFunc_loop:
 	lodsb
 
+	cmp al, 0x08
+	je out_sendFunc_backspace
+
+	cmp al, 0x09
+	je out_sendFunc_tab
+
 	cmp al, 0x0a
 	je out_sendFunc_newline
 
@@ -37,6 +43,24 @@ out_sendFunc_loop:
 
 	mov dword[out_cursor], edi
 
+	clc
+	ret
+
+out_sendFunc_tab:
+	; todo: fix this
+	add dword[out_cursor], 2
+	clc
+	ret
+
+out_sendFunc_backspace:
+	cmp dword[out_cursor], 0xb8f00
+	je out_sendFunc_backspaceSkip
+
+	sub dword[out_cursor], 2
+	mov edi, dword[out_cursor]
+	mov word[edi], 0x0000	
+
+out_sendFunc_backspaceSkip:
 	clc
 	ret
 

@@ -107,7 +107,7 @@ ps2_secondCtrl:
 	int 0x34
 
 	mov al, 0x00
-	mov ebx, "PS2 "
+	mov ebx, "PS/2"
 	mov dh, 15
 	int 0x34
 
@@ -134,8 +134,42 @@ ps2_error:
 	ret
 
 ps2_miscFunc:
-	cli
-	jmp $
+	; mouse not rn
+	in al, 0x60
+
+	test al, 0x80
+	jnz ps2_miscFunc_skip
+
+	movzx eax, al
+	mov al, byte[ps2_layout+eax]
+	mov byte[ps2_msg], al
+
+	mov eax, "OUT "
+	mov dh, 14
+	int 0x34
+
+	mov ax, dx ; destination: PCI
+
+	; print string2 on OUT
+	mov edi, ps2_msg
+	mov ecx, 1
+	mov dh, 13
+	mov bl, 6
+	int 0x34
+ps2_miscFunc_skip:
+	ret
+
+ps2_msg:
+	db 0, 0
+
+ps2_layout:
+	db 0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'
+	db '-', '=', 0x08, 0x09, 'q', 'w', 'e', 'r', 't', 'y', 'u'
+	db 'i', 'o', 'p', '[', ']', 0x0a, 0, 'a', 's', 'd', 'f', 'g'
+	db 'h', 'j', 'k', 'l', ';', 0x29, '`', 0, 0x5c ; 0x29='
+	db 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*'
+	db 0, ' ', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '7', '8'
+	db '9', '-', '4', '5', '6', '+', '1', '2', '3', '0', '.'
 
 ps2_initStr:
 	db "Initializing PS2...", 10

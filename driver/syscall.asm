@@ -11,9 +11,11 @@ kernelABIStart:
 	; INT 0x33 Yield
 	mov dword[0x99a], 0xae000008
 	mov word[0x998], yieldScheduler
-	; int 0x34 Driver Functions
+	; INT 0x34 Driver ABI
 	mov dword[0x9a2], 0xae000019
 	mov word[0x9a0], kernelABIDriver
+	; INT 0x35 Ring 1 ABI
+
 	ret
 
 kernelABIUpdatePage:
@@ -79,3 +81,4 @@ kernelABIDriver_lookup:
 	dd loadDriver
 	dd getRawAddress
 	dd registerInterrupt
+	dd sendNotification

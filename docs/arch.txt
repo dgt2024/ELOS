@@ -9,6 +9,7 @@ DWORD		0x60c		Total Allocated Memory
 WORD		0x610		PID
 WORD		0x700		Interrupt Device
 BYTE		0x702		Interrupt # 
+WORD		0x704		Focused PDHNDL (send events here)
 QWORD[]		0x800		IDT
 WORD[]		0x3000		Interrupt Drivers
 DWORD[]		0x4000		PD2
@@ -54,6 +55,8 @@ device/device.asm
  - endDevice -> AX=DVHNDL -> NO OUTPUT : NO STATUS
 kernel/interrupt.asm
  - registerInterrupt -> AL=IRQ -> NO OUTPUT : NO STATUS
+kernel/notification.asm
+ - sendNotification -> AX=PDHNDL,BL=TYPE,ECX=DATA 24b -> NO OUTPUT
 
 **HNDL structure**:
 
@@ -139,6 +142,7 @@ INT 0x34 Driver ABI
 	DH=17;	loadDriver
 	DH=18;	getRawAddress
 	DH=19;	registerInterrupt
+	DH=20;	sendNotification
 
 **PCI init structure**
 
@@ -160,3 +164,7 @@ b3=0: 00|CLASS|SUBCLASS|PROG IF (CLASS IF b2,SUBCLASS IF b1,PROG IF IF b0)
 0x0 SIZE
 0x1 TYP PRV WRT HDN RFU EXE F_TYPE  NAME SIZE
 0x2 & 0x3 POINTER TO FILE START
+
+**Notfication Types**
+0x10=KEY_DOWN
+0x11=KEY_UP

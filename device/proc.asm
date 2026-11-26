@@ -31,6 +31,9 @@ kernelProcMain_initLoop:
 	mov ecx, 8
 	call intToStr
 
+	mov ax, word[0x10000]
+	mov word[0x704], ax
+
 	; print string2 on COM1
 	mov edi, str
 	mov ecx, str_end-str

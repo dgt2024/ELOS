@@ -137,30 +137,24 @@ ps2_miscFunc:
 	; mouse not rn
 	in al, 0x60
 
+	mov bl, 0x10
+
 	test al, 0x80
-	jnz ps2_miscFunc_skip
+	jz ps2_miscFunc_keyUp
+
+	mov bl, 0x11 ; KEY_UP
+	and al, 0x7f
+
+ps2_miscFunc_keyUp:
 
 	movzx eax, al
-	mov al, byte[ps2_layout+eax]
-	mov byte[ps2_msg], al
+	mov ah, byte[ps2_layout+eax]
+	movzx ecx, ax
 
-	mov eax, "OUT "
-	mov dh, 14
+	mov ax, word[0x704]
+	mov dh, 20
 	int 0x34
-
-	mov ax, dx ; destination: PCI
-
-	; print string2 on OUT
-	mov edi, ps2_msg
-	mov ecx, 1
-	mov dh, 13
-	mov bl, 6
-	int 0x34
-ps2_miscFunc_skip:
 	ret
-
-ps2_msg:
-	db 0, 0
 
 ps2_layout:
 	db 0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'

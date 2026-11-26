@@ -106,12 +106,12 @@ ps2_secondCtrl:
 	mov ax, 0 ; log
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 
 	mov al, 0x00
 	mov ebx, "PS/2"
 	mov dh, 15
-	int 0x34
+	int 0x36
 
 	mov bx, dx
 
@@ -119,18 +119,20 @@ ps2_secondCtrl:
 	push ebx
 
 	mov dh, 19
-	int 0x34
+	int 0x36
 
 	pop ebx
 
 	mov al, 0x2c
 	mov dh, 19
-	int 0x34
+	int 0x36
+
+	in al, 0x60
 	ret
 
 ps2_error:
 	mov dh, 11
-	int 0x34
+	int 0x36
 
 	stc
 	ret
@@ -155,7 +157,7 @@ ps2_miscFunc_keyUp:
 
 	mov ax, word[0x704]
 	mov dh, 20
-	int 0x34
+	int 0x36
 	ret
 
 ps2_layout:

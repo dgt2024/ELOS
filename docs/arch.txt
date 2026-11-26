@@ -7,6 +7,7 @@ BYTE		0x60c		RAM block count			>> BEFORE initializeMemory();
 DWORD		0x608		TID
 DWORD		0x60c		Total Allocated Memory
 WORD		0x610		PID
+DWORD		0x614		Interrupt Handler ESP
 WORD		0x700		Interrupt Device
 BYTE		0x702		Interrupt # 
 WORD		0x704		Focused PDHNDL (send events here)
@@ -122,7 +123,7 @@ INT 0x30 Updates Page at EDX
 INT 0x31 Updates IDT
 INT 0x32 Updates CR3 (All pages)
 INT 0x33 Yields Scheduler
-INT 0x34 Driver ABI
+int 0x36 Driver ABI
 	DH=0;	pageAllocate
 	DH=1;	pageFree
 	DH=2;	registerContainer

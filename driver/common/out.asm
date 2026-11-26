@@ -6,7 +6,7 @@ times 0x20 - ($ - out_fdt) db 0
 	mov al, 0x00
 	mov ebx, "OUT "
 	mov dh, 15
-	int 0x34
+	int 0x36
 	ret
 
 out_sendFunc:
@@ -50,6 +50,8 @@ out_sendFunc_tab:
 	; todo: fix this
 	add dword[out_cursor], 2
 	loop out_sendFunc_loop
+	clc
+	ret
 
 out_sendFunc_backspace:
 	cmp dword[out_cursor], 0xb8f00
@@ -61,6 +63,8 @@ out_sendFunc_backspace:
 
 out_sendFunc_backspaceSkip:
 	loop out_sendFunc_loop
+	clc
+	ret
 
 out_sendFunc_newline:
 	mov dword[out_cursor], 0xb8f00
@@ -77,6 +81,8 @@ out_sendFunc_newline:
 	mov edi, 0xb8f00
 
 	loop out_sendFunc_loop
+	clc
+	ret
 
 out_sendFunc_end:
 	clc

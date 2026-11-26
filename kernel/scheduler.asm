@@ -11,8 +11,6 @@ startScheduler_loop:
 	mov ax, word[edi-2] ; get procedure PDHNDL
 	call getRawContainer
 
-	mov word[0x610], cx
-
 	and dx, 0xf000
 	push edx
 	or dx, 0x0003
@@ -20,6 +18,11 @@ startScheduler_loop:
 	pop edx
 
 	invlpg[0x200000]
+
+	test byte[0x200030], 0x02
+	jz startScheduler_afterYield
+
+	mov word[0x610], cx
 
 	add dx, 0x60
 	mov cr3, edx ; Set CR3
@@ -64,6 +67,14 @@ startScheduler_afterYield:
 
 yieldScheduler:
 	push eax
+	mov al, 0x20
+	out 0x20, al
+	pop eax
+
+	cmp word[0x610], 0
+	je yieldScheduler_skip
+
+	push eax
 	mov eax, dword[esp+4]
 	mov dword[0x200020], eax ; EIP
 
@@ -77,15 +88,16 @@ yieldScheduler:
 	mov esp, 0x200020
 	pushad
 
-	mov al, 0x20
-	out 0x20, al
-
 	inc dword[0x20003c]
 
-	movzx edi, word[0x50c]
+	movzx ecx, word[0x610]
+	mov word[0x610], 0
+	sti
 
-	mov ecx, 0x4000
-	sub ecx, edi
-
+	lea edi, [ecx-0x8000]
+	neg edi
 	lea edi, [0x10002+edi*2]
 	jmp startScheduler_afterYield
+
+yieldScheduler_skip:
+	iretd

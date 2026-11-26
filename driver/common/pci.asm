@@ -7,12 +7,12 @@ times 0x20 - ($ - pci_fdt) db 0
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 
 	mov al, 0x00
 	mov ebx, "PCI "
 	mov dh, 15
-	int 0x34
+	int 0x36
 	ret
 
 pci_readFunc:
@@ -36,7 +36,7 @@ pci_initFunc:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 	popad
 
 	mov ebx, 0x80000000
@@ -110,14 +110,14 @@ pci_initFunc_typeloopiterate:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 	popad
 
 	mov ecx, ebx
 	mov ax, word[edi+1] ; PCI device waiting
 	mov dh, 13
 	mov bl, 4
-	int 0x34
+	int 0x36
 	ret
 
 pci_initFunc_found:
@@ -126,7 +126,7 @@ pci_initFunc_found:
 	mov ax, word[edi+1] ; PCI device waiting
 	mov dh, 13
 	mov bl, 0
-	int 0x34
+	int 0x36
 	popad
 	jmp pci_initFunc_typeloopiterate
 

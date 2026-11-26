@@ -11,9 +11,22 @@ kernelABIStart:
 	; INT 0x33 Yield
 	mov dword[0x99a], 0xae000008
 	mov word[0x998], yieldScheduler
-	; INT 0x34 Driver ABI
-	mov dword[0x9a2], 0xae000019
-	mov word[0x9a0], kernelABIDriver
+	; INT 0x34 Set state down
+	mov dword[0x9a2], 0xae000008
+	mov word[0x9a0], kernelABIDown
+	; INT 0x35 Return from ISR
+	mov dword[0x9aa], 0xae000008
+	mov word[0x9a8], IRQCall_return
+	; INT 0x36 Driver ABI
+	mov dword[0x9b2], 0xae000008
+	mov word[0x9b0], kernelABIDriver
+	; TSS setup
+	mov word[0x504], 0x7800
+	mov word[0x508], 0x10
+	mov word[0x50c], 0x7400
+	mov word[0x510], 0x21
+	mov word[0x560], 0x1300
+	mov word[0x3ff8], 0x0003
 	ret
 
 kernelABIUpdatePage:
@@ -44,8 +57,16 @@ kernelABIUpdateCR3:
 	
 	iretd
 
+kernelABIDown:
+	mov byte[0x200032], 0x34 ; last syscall #
+	mov byte[0x200033], dh ; last syscall function
+	inc word[0x200036] ; syscall count
+
+	and byte[0x200030], 0xfd ; set down
+	jmp yieldScheduler
+
 kernelABIDriver:
-	mov byte[0x200032], 0x33 ; last syscall #
+	mov byte[0x200032], 0x35 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
 

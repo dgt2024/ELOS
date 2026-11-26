@@ -16,12 +16,18 @@ sendNotification:
 	mov byte[0x204103+edx*4], bl
 
 	inc byte[0x204052]
+
+	or byte[0x204030], 0x02
 	clc
 	ret
 
 sendNotification_error:
 	stc
 	ret
+
+sendNotification_c:
+	cli
+	jmp $
 
 readNotification:
 	cmp byte[0x200052], 0

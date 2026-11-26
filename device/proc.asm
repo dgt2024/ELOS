@@ -9,7 +9,7 @@ kernelProcMain_initLoop:
 
 	push esi
 	mov dh, 17
-	int 0x34
+	int 0x36
 	pop esi
 
 	add esi, 3
@@ -40,11 +40,11 @@ kernelProcMain_initLoop:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 
 	mov eax, "OUT "
 	mov dh, 14
-	int 0x34
+	int 0x36
 
 	mov ax, dx ; destination: PCI
 
@@ -53,12 +53,12 @@ kernelProcMain_initLoop:
 	mov ecx, bootStr_end - bootStr
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 
 	; read mod/ldfs
 	mov eax, "LDFS"
 	mov dh, 14
-	int 0x34
+	int 0x36
 
 	mov ax, dx
 
@@ -67,7 +67,7 @@ kernelProcMain_initLoop:
 	mov ecx, listCSVFilename_end - listCSVFilename
 	mov dh, 13
 	mov bl, 2
-	int 0x34
+	int 0x36
 	pop eax
 
 	mov edi, listCSVFilename_end
@@ -83,7 +83,7 @@ listCSVLoop:
 	mov eax, edi ; here should be the address of the driver
 
 	mov dh, 18
-	int 0x34
+	int 0x36
 
 	mov ebp, edx
 
@@ -107,7 +107,7 @@ listCSVLoop:
 
 	mov dh, 13
 	mov bl, 2
-	int 0x34
+	int 0x36
 
 	pop ebp
 
@@ -120,7 +120,7 @@ listCSVLoop:
 	push eax
 	push edi
 	mov dh, 17
-	int 0x34
+	int 0x36
 	pop edi
 	pop eax
 
@@ -136,7 +136,7 @@ listCSVLoop:
 
 	mov eax, "OUT "
 	mov dh, 14
-	int 0x34
+	int 0x36
 
 	mov word[shellDevice], dx ; destination: OUT
 
@@ -146,13 +146,14 @@ shellLoop_main:
 	mov ax, word[shellDevice]
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 
 shellLoop:
 	sti
-	mov dh, 21
 	int 0x34
-	jc shellLoop
+
+	mov dh, 21
+	int 0x36
 
 	cmp bl, 0x10
 	je shellLoop_keyDown
@@ -169,7 +170,7 @@ shellLoop_keyDown:
 	mov ax, word[shellDevice]
 	mov dh, 13
 	mov bl, 6
-	int 0x34
+	int 0x36
 	jmp shellLoop
 
 shellDevice:

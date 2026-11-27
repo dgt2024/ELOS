@@ -42,7 +42,7 @@ times 16 - ($ - __modcfg_name) db 0
 	db 8
 	dd _LSECTOR+5
 __dircfg_name:
-	db "dir.cfg"
+	db "path.cfg"
 times 16 - ($ - __dircfg_name) db 0
 
 __config_end:
@@ -92,7 +92,7 @@ __dircfg_end:
 
 times 512*6 - ($ - $$) db 0				; _LSECTOR+6 /bin/hwrld
 
-section .binary.hwrld vstart=0x40001000
+section .binary.hwrld vstart=0x4000200a
 __hwrld:
 %include "bin/hwrld.asm"
 __hwrld_end:

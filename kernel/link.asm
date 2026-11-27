@@ -10,14 +10,14 @@ giveContainer:
 	or bp, 0x0005
 
 	; Map PDHNDL to temporary virtual address
-	mov dword[0x4000], ebp
+	mov dword[0x4020], ebp
 
-	mov edx, 0x200000
+	mov edx, 0x204000
 	int 0x30
 
-	inc byte[0x20002c]
+	inc byte[0x20402c]
 
-	mov edi, 0x200200
+	mov edi, 0x204200
 
 	mov edx, eax
 	xor ax, ax
@@ -44,28 +44,29 @@ mapContainer:
 	or bp, 0x0005
 
 	; Map PDHNDL to temporary virtual address
-	mov dword[0x4000], ebp
+	mov dword[0x4020], ebp
 
 	push ebp
 	add ebp, 0x1000 ; CR3
-	mov dword[0x4008], ebp
+	mov dword[0x4028], ebp
 	pop ebp
 
-	mov edx, 0x200000
+	mov edx, 0x204000
 	int 0x30
-	mov edx, 0x201000
+	mov edx, 0x205000
 	int 0x30
 
 	; find first empty slot in PD
 	push eax ; save raw HNDL
 
-	mov edi, 0x201000
+	mov edi, 0x205000
 	xor eax, eax
 	mov ecx, 0x200
 
 mapContainer_loop:
 	scasd
 	je mapContainer_found
+
 	add edi, 4
 	loop mapContainer_loop
 
@@ -77,22 +78,22 @@ mapContainer_found:
 
 	mov ebp, dword[edi-12]
 
-	test word[0x200034], 0x1ff
+	test word[0x204034], 0x1ff
 	jz mapContainer_newPT
 
 mapContainer_afterNewPT:
-	inc word[0x200034]
+	inc word[0x204034]
 
 	or bp, 0x3
-	mov dword[0x4000], ebp
+	mov dword[0x4020], ebp
 
-	mov edx, 0x200000
+	mov edx, 0x204000
 	int 0x30
 
 	movzx eax, ax
 	mov ebx, dword[eax*8+0x1fffc] ; low 32-bit
 	mov cl, byte[eax*8+0x1fff8]
-	xor eax, eax ; high 32-bit
+	mov al, 0
 
 	or bl, 0x01 ; present
 
@@ -108,12 +109,12 @@ mapContainer_writeMap:
 
 	test cl, 0x04
 	jnz mapContainer_codeMap
-	or eax, 0x80000000
+	mov al, 0x80
 mapContainer_codeMap:
 
 	push eax ; save high 64-bit
 	; Find empty PTE
-	mov edi, 0x200000
+	mov edi, 0x204000
 	mov ecx, 0x200
 	xor eax, eax
 
@@ -130,7 +131,7 @@ mapContainer_foundPTE:
 	pop eax
 
 	mov dword[edi-4], ebx
-	mov dword[edi], eax
+	mov byte[edi+3], al
 
 	clc
 	ret
@@ -151,7 +152,7 @@ mapContainer_newPT:
 	call giveContainer
 	pop edx
 
-	inc byte[0x20002f] ; inc PDHNDL->PT#
+	inc byte[0x20402f] ; inc PDHNDL->PT#
 
 	pop edi ; save PD
 

@@ -16,21 +16,6 @@ kernelProcMain_initLoop:
 	cmp esi, fileDescriptorTable_end
 	jb kernelProcMain_initLoop
 
-	rdtsc
-	sub eax, dword[0x600]
-	sub edx, dword[0x604]
-
-	push eax
-
-	mov eax, edx
-	mov edi, str_num
-	mov ecx, 8
-	call intToStr
-
-	pop eax
-	mov ecx, 8
-	call intToStr
-
 	mov ax, word[0x10000]
 	mov word[0x704], ax
 
@@ -134,6 +119,27 @@ listCSVLoop:
 	jne listCSVLoop
 	sti
 
+	mov al, 0
+	mov dh, 0
+	int 0x36
+
+	mov edi, edx
+	mov ax, 0x0007
+	mov bx, 0x0002
+	mov dh, 2
+	int 0x36
+
+	mov ax, dx
+	push eax
+	mov bx, 0x0002
+	mov dh, 7
+	int 0x36
+	pop eax
+
+	mov bx, 0x0002
+	mov dh, 8
+	int 0x36
+
 	mov eax, "OUT "
 	mov dh, 14
 	int 0x36
@@ -148,12 +154,16 @@ shellLoop_main:
 	mov bl, 6
 	int 0x36
 
+	mov edi, 0x40002000
+
 shellLoop:
 	sti
 	int 0x34
 
+	push edi
 	mov dh, 21
 	int 0x36
+	pop edi
 
 	cmp bl, 0x10
 	je shellLoop_keyDown
@@ -161,17 +171,60 @@ shellLoop:
 
 shellLoop_keyDown:
 	cmp ch, 0x0a
-	je shellLoop_main
+	je shellLoop_run
+
+	cmp ch, 0
+	je shellLoop_noWrite
+
+	cmp ch, 0x08
+	jne shellLoop_noBackspace
+
+	dec edi
+	jmp shellLoop_noWrite
+
+shellLoop_noBackspace:
+
+	mov byte[edi], ch
+	inc edi
+
+shellLoop_noWrite:
 
 	mov byte[shellStr], ch
 
+	push edi
 	mov edi, shellStr
 	mov ecx, 1
 	mov ax, word[shellDevice]
 	mov dh, 13
 	mov bl, 6
 	int 0x36
+	pop edi
 	jmp shellLoop
+
+shellLoop_run:
+	inc edi
+	mov byte[edi], 0
+	lea ecx, [edi-0x40002000]
+
+	push edi
+	push ecx
+	mov eax, "LDFS"
+	mov dh, 14
+	int 0x36
+	pop ecx
+
+	mov ax, dx
+
+	mov edi, 0x40002000
+	mov dh, 13
+	mov bl, 2
+	int 0x36
+	pop edi
+
+	pushad
+	call edi
+	popad
+	jmp shellLoop_main
 
 shellDevice:
 	dw 0
@@ -201,16 +254,14 @@ intToStr_letter:
 	ret
 
 shell:
-	db 10, "ELOS7> "
+	db 10, "$> "
 shell_end:
 
 shellStr:
 	db 0
 
 str:
-	db "File Table Initialized in 0x"
-str_num:
-	db "XXXXXXXXXXXXXXXX TSC ticks from boot", 10
+	db "FDT Initialized", 10
 str_end:
 
 bootStr:

@@ -98,6 +98,7 @@ kernelABIPriviledge_lookup:
 	dd getRawAddress
 	dd userAllocate
 	dd readNotification
+	dd userSendNotification
 
 kernelABIPriviledgeR0:
 	mov byte[0x200032], 0x39 ; last syscall #

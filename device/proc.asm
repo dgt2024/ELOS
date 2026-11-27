@@ -233,6 +233,11 @@ shellLoop_run:
 	mov dh, 1
 	int 0x43
 
+	mov ax, dx
+	mov dh, 6
+	mov ecx, "hey"
+	int 0x42
+
 	mov dh, 2
 	int 0x43
 	jmp shellLoop_main

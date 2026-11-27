@@ -139,13 +139,14 @@ createProcedure_noClamp:
 	call mapContainer
 
 	pop eax
-	pop edx
+	mov edx, dword[esp]
 
 	mov bx, dx
 	push ax ; HNDL
 	call giveContainer
 	pop ax
 	call mapContainer
+	pop edx
 
 	ret
 

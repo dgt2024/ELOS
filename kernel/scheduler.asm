@@ -19,9 +19,14 @@ startScheduler_loop:
 
 	invlpg[0x200000]
 
-	test byte[0x200030], 0x02
-	jz startScheduler_afterYield
+	cmp byte[0x200052], 0
+	jne startScheduler_run
 
+	test byte[0x200030], 0x02
+	jnz startScheduler_run
+	jmp startScheduler_afterYield
+
+startScheduler_run:
 	cli
 	mov ax, word[edi-2]
 	mov word[0x612], ax

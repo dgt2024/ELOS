@@ -18,6 +18,11 @@ userAllocate:
 	pop edx
 	ret
 
+userSendNotification:
+	mov bl, 0
+	call sendNotification
+	ret
+
 userEndProcedure:
 	movzx ecx, word[0x610]
 	mov word[0x610], 0

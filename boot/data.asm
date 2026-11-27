@@ -20,7 +20,7 @@ fileDescriptorTable:
 	db 0x06
 	; kernelproc:
 	dw 0x0900
-	db 0x01
+	db 0x02
 	; common/out:
 	dw 0x0a00
 	db 0x01

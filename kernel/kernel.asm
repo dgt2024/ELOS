@@ -54,12 +54,25 @@ main:
 	mov ax, 0x38
 	ltr ax
 
+	mov eax, 0x80000000
+	cpuid
+	cmp eax, 0x80000001
+	jb main_noNX
+
+	mov eax, 0x80000001
+	cpuid
+	test edx, 0x100000
+	jz main_noNX
+
+	or byte[0x6ff], 0x01
+
 	; enable NX bit
 	mov ecx, 0xc0000080 ; IA32_EFER
 	rdmsr
 	or ax, 0x800
 	wrmsr
-	
+main_noNX:
+
 	; Run procedures
 	jmp startScheduler
 

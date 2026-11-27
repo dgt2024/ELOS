@@ -170,6 +170,9 @@ shellLoop:
 	jmp shellLoop
 
 shellLoop_keyDown:
+	cmp cl, 0x4e
+	je shellLoop_reload
+
 	cmp ch, 0x0a
 	je shellLoop_run
 
@@ -180,6 +183,8 @@ shellLoop_keyDown:
 	jne shellLoop_noBackspace
 
 	dec edi
+	mov byte[edi], 0
+
 	jmp shellLoop_noWrite
 
 shellLoop_noBackspace:
@@ -199,6 +204,28 @@ shellLoop_noWrite:
 	mov bl, 6
 	int 0x36
 	pop edi
+	jmp shellLoop
+
+shellLoop_reload:
+	mov edi, 0x40002000
+	mov al, 0
+	mov ecx, 4096
+	rep scasb
+
+	lea ecx, [edi-0x40002000]
+	dec edi
+
+	push ecx
+	mov eax, "OUT "
+	mov dh, 14
+	int 0x36
+	pop ecx
+
+	mov ax, dx
+	mov edi, 0x40002000
+	mov dh, 13
+	mov bl, 6
+	int 0x36
 	jmp shellLoop
 
 shellLoop_run:

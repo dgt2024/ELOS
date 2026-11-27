@@ -1,4 +1,4 @@
-_LSECTOR equ 15
+_LSECTOR equ 16
 section .boot vstart=0x7c00
 use16
 %include "boot/boot.asm"
@@ -25,7 +25,7 @@ generalError:
 times 512 * 7 - ($ - $$) db 0
 section .program vstart=0x40001000
 %include "device/proc.asm"
-times 512 - ($ - $$) db 0
+times 512 * 2 - ($ - $$) db 0
 section .driver.uart vstart=0x80000000
 %include "driver/common/uart.asm"
 times 512 - ($ - $$) db 0

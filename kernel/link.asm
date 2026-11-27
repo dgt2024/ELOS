@@ -106,9 +106,13 @@ mapContainer_kernelMap:
 	jz mapContainer_writeMap
 	or bl, 0x02 ; r/w bit
 mapContainer_writeMap:
+	
+	test byte[0x6ff], 0x01
+	jz mapContainer_codeMap
 
 	test cl, 0x04
 	jnz mapContainer_codeMap
+
 	mov al, 0x80
 mapContainer_codeMap:
 

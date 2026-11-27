@@ -123,6 +123,8 @@ listCSVLoop:
 	mov dh, 4
 	int 0x42
 
+	mov word[shellShare], dx
+
 	mov eax, "OUT "
 	mov dh, 2
 	int 0x42
@@ -163,6 +165,9 @@ shellLoop_keyDown:
 	cmp ch, 0x08
 	jne shellLoop_noBackspace
 
+	cmp edi, 0x40002000
+	jbe shellLoop
+
 	dec edi
 	mov byte[edi], 0
 
@@ -189,7 +194,7 @@ shellLoop_noWrite:
 
 shellLoop_run:
 	inc edi
-	mov byte[edi], 0
+	mov byte[edi-1], 0
 	lea ecx, [edi-0x40002000]
 
 	push edi
@@ -252,6 +257,9 @@ shellLoop_runError:
 	jmp shellLoop_main
 
 shellDevice:
+	dw 0
+
+shellShare:
 	dw 0
 
 intToStr:

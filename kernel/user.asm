@@ -1,8 +1,9 @@
-userAllocate:
+userAllocate: ; AX=flags
+	push eax
 	call pageAllocate
 
 	mov edi, edx
-	mov ax, 0x0007
+	pop eax
 	mov bx, word[0x612]
 	call registerContainer
 
@@ -16,6 +17,16 @@ userAllocate:
 	mov bx, word[0x612]
 	call mapContainer
 	pop edx
+	ret
+
+userCreateSingle:
+	mov ax, 0x0007
+	call userAllocate
+	ret
+
+userCreateShare:
+	mov ax, 0x0187
+	call userAllocate
 	ret
 
 userSendNotification:

@@ -96,9 +96,10 @@ kernelABIPriviledge_lookup:
 	dd runDevice
 	dd searchDevice
 	dd getRawAddress
-	dd userAllocate
+	dd userCreateSingle
 	dd readNotification
 	dd userSendNotification
+	dd userCreateShare
 
 kernelABIPriviledgeR0:
 	mov byte[0x200032], 0x39 ; last syscall #

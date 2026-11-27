@@ -102,7 +102,8 @@ yieldScheduler:
 	mov word[0x610], 0
 	sti
 
-	lea edi, [ecx-0x8000]
+	lea edi, [ecx-0x7fff]
+	dec ecx
 	neg edi
 	lea edi, [0x10002+edi*2]
 	jmp startScheduler_afterYield

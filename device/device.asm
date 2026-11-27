@@ -66,11 +66,14 @@ runDevice_driverCall:
 	
 runDevice_driverCallReturn:
 	popf
+	jc runDevice_returnBad
 
 	add esp, 8
-
+	clc
 	ret
 
+runDevice_returnBad:
+	add esp, 8
 runDevice_error:
 	stc
 	ret

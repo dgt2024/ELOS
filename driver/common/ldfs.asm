@@ -115,6 +115,7 @@ ldfs_readFunc_readLoop:
 	mov eax, dword[edi]
 	mov dword[ldfs_pwd], eax
 	loop ldfs_readFunc_readLoop
+	clc
 	ret
 
 ldfs_readFunc_ptr:
@@ -128,7 +129,7 @@ ldfs_readFunc_nextItem:
 	add esi, 24
 
 	cmp esi, ebp
-	ja ldfs_readFunc_unexistent
+	jae ldfs_readFunc_unexistent
 
 	cmp dword[esi], 0xffffffff
 	jne ldfs_readFunc_findLoop
@@ -138,8 +139,8 @@ ldfs_readFunc_nextPage:
 	jmp $
 
 ldfs_readFunc_unexistent:
-	cli
-	jmp $
+	stc
+	ret
 
 ldfs_pwd:
 	dd 0

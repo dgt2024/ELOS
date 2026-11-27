@@ -207,6 +207,7 @@ shellLoop_run:
 	mov dh, 1
 	mov bl, 2
 	int 0x42
+	jc shellLoop_runError
 
 	mov al, 0
 	mov dh, 4
@@ -234,6 +235,15 @@ shellLoop_run:
 
 	mov dh, 2
 	int 0x43
+	jmp shellLoop_main
+
+shellLoop_runError:
+	mov edi, shellError
+	mov ecx, shellError_end - shellError
+	mov ax, word[shellDevice]
+	mov dh, 1
+	mov bl, 6
+	int 0x42
 	jmp shellLoop_main
 
 shellDevice:
@@ -266,6 +276,10 @@ intToStr_letter:
 shell:
 	db 10, "$> "
 shell_end:
+
+shellError:
+	db 10, "Error: file not found", 10, 0
+shellError_end:
 
 shellStr:
 	db 0

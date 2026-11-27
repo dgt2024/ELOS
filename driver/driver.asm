@@ -38,8 +38,6 @@ runDriver:
 	jz runDriver_null
 
 	call eax
-
-	clc
 	ret
 
 runDriver_null:

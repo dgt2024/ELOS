@@ -51,10 +51,3 @@ IRQCall_return:
 
 	mov esp, dword[0x614]
 	iretd
-
-	push eax
-	mov eax, 0x77ec
-	mov dr0, eax
-	mov eax, 0xd0001
-	mov dr7, eax
-	pop eax

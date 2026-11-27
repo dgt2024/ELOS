@@ -57,6 +57,14 @@ __hwrld_name:
 	db "hwrld"
 times 16 - ($ - __hwrld_name) db 0
 
+	dw __echo_end - __echo
+	db 01010011b
+	db 8
+	dd _LSECTOR+7
+__echo_name:
+	db "echo"
+times 16 - ($ - __echo_name) db 0
+
 __bin_end:
 times 512*3 - ($ - $$) db 0				; _LSECTOR+3 /mod/
 __mod:
@@ -64,7 +72,7 @@ __mod:
 	dw __pit_end - __pit
 	db 01010011b
 	db 8
-	dd _LSECTOR+7
+	dd _LSECTOR+8
 __pit_name:
 	db "pit.sys"
 times 16 - ($ - __pit_name) db 0
@@ -72,7 +80,7 @@ times 16 - ($ - __pit_name) db 0
 	dw __ps2_end - __ps2
 	db 01010011b
 	db 8
-	dd _LSECTOR+8
+	dd _LSECTOR+9
 __ps2_name:
 	db "ps2.sys"
 times 16 - ($ - __ps2_name) db 0
@@ -97,14 +105,21 @@ __hwrld:
 %include "bin/hwrld.asm"
 __hwrld_end:
 
-times 512 - ($ - $$) db 0				; _LSECTOR+7 /mod/pit.sys
+times 512 - ($ - $$) db 0				; _LSECTOR+7 /bin/echo
+
+section .binary.echo vstart=0x40001000
+__echo:
+%include "bin/echo.asm"
+__echo_end:
+
+times 512 - ($ - $$) db 0				; _LSECTOR+8 /mod/pit.sys
 
 section .driver.pit vstart=0x80000000
 __pit:
 %include "module/common/pit.asm"
 __pit_end:
 
-times 512 - ($ - $$) db 0				; _LSECTOR+8 /mod/ps2.sys
+times 512 - ($ - $$) db 0				; _LSECTOR+9 /mod/ps2.sys
 
 section .driver.ps2 vstart=0x80000000
 __ps2:

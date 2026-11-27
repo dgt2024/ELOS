@@ -218,5 +218,5 @@ bootStr:
 bootStr_end:
 
 listCSVFilename:
-	db "mod/list.ll", 0
+	db "config/mod.cfg", 0
 listCSVFilename_end:

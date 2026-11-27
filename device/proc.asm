@@ -9,7 +9,7 @@ kernelProcMain_initLoop:
 
 	push esi
 	mov dh, 0
-	int 0x37
+	int 0x38
 	pop esi
 
 	add esi, 3
@@ -25,11 +25,11 @@ kernelProcMain_initLoop:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 1
 	mov bl, 6
-	int 0x37
+	int 0x38
 
 	mov eax, "OUT "
 	mov dh, 2
-	int 0x37
+	int 0x38
 
 	mov ax, dx ; destination: PCI
 
@@ -38,12 +38,12 @@ kernelProcMain_initLoop:
 	mov ecx, bootStr_end - bootStr
 	mov dh, 1
 	mov bl, 6
-	int 0x37
+	int 0x38
 
 	; read mod/ldfs
 	mov eax, "LDFS"
 	mov dh, 2
-	int 0x37
+	int 0x38
 
 	mov ax, dx
 
@@ -52,7 +52,7 @@ kernelProcMain_initLoop:
 	mov ecx, listCSVFilename_end - listCSVFilename
 	mov dh, 1
 	mov bl, 2
-	int 0x37
+	int 0x38
 	pop eax
 
 	mov edi, listCSVFilename_end
@@ -68,7 +68,7 @@ listCSVLoop:
 	mov eax, edi ; here should be the address of the driver
 
 	mov dh, 3
-	int 0x37
+	int 0x38
 
 	mov ebp, edx
 
@@ -92,7 +92,7 @@ listCSVLoop:
 
 	mov dh, 1
 	mov bl, 2
-	int 0x37
+	int 0x38
 
 	pop ebp
 
@@ -105,7 +105,7 @@ listCSVLoop:
 	push eax
 	push edi
 	mov dh, 0
-	int 0x37
+	int 0x38
 	pop edi
 	pop eax
 
@@ -121,11 +121,11 @@ listCSVLoop:
 
 	mov al, 0
 	mov dh, 4
-	int 0x37
+	int 0x38
 
 	mov eax, "OUT "
 	mov dh, 2
-	int 0x37
+	int 0x38
 
 	mov word[shellDevice], dx ; destination: OUT
 
@@ -135,7 +135,7 @@ shellLoop_main:
 	mov ax, word[shellDevice]
 	mov dh, 1
 	mov bl, 6
-	int 0x37
+	int 0x38
 
 	mov edi, 0x40002000
 
@@ -145,7 +145,7 @@ shellLoop:
 
 	push edi
 	mov dh, 5
-	int 0x37
+	int 0x38
 	pop edi
 
 	cmp bl, 0x10
@@ -182,7 +182,7 @@ shellLoop_noWrite:
 	mov ax, word[shellDevice]
 	mov dh, 1
 	mov bl, 6
-	int 0x37
+	int 0x38
 	pop edi
 	jmp shellLoop
 
@@ -193,22 +193,42 @@ shellLoop_run:
 
 	push edi
 	push ecx
+
 	mov eax, "LDFS"
 	mov dh, 2
-	int 0x37
-	pop ecx
+	int 0x38
 
 	mov ax, dx
+
+	mov ecx, dword[esp]
 
 	mov edi, 0x40002000
 	mov dh, 1
 	mov bl, 2
-	int 0x37
-	pop edi
+	int 0x38
 
-	pushad
-	call edi
-	popad
+	mov al, 0
+	mov dh, 4
+	int 0x38
+
+	pop ecx
+	pop edi ; pointer to code
+
+	push ecx
+	push edx
+
+	mov ecx, 0x200
+	mov esi, edi
+	mov edi, 0x40003000
+	rep movsb
+
+	pop eax
+	pop ecx
+
+	mov esi, 0x40002000
+	mov bl, 0xdf
+
+	int 0x36
 	jmp shellLoop_main
 
 shellDevice:

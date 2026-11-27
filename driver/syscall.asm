@@ -17,12 +17,15 @@ kernelABIStart:
 	; INT 0x35 Return from ISR
 	mov dword[0x9aa], 0xae000008
 	mov word[0x9a8], IRQCall_return
-	; INT 0x36 Driver ABI
+	; INT 0x36 Create Procedure
 	mov dword[0x9b2], 0xae000008
-	mov word[0x9b0], kernelABIDriver
-	; INT 0x37 Priviledged ABI
-	mov dword[0x9ba], 0xae000008
-	mov word[0x9b8], kernelABIPriviledge
+	mov word[0x9b0], createProcedure
+	; INT 0x37 Driver ABI
+	mov dword[0x9ba], 0xae000019
+	mov word[0x9b8], kernelABIDriver
+	; INT 0x38 Priviledged ABI
+	mov dword[0x9c2], 0xae000019
+	mov word[0x9c0], kernelABIPriviledge
 	; TSS setup
 	mov word[0x504], 0x7800
 	mov word[0x508], 0x10
@@ -135,21 +138,3 @@ kernelABIPriviledge_lookup:
 	dd getRawAddress
 	dd userAllocate
 	dd readNotification
-
-userAllocate:
-	call pageAllocate
-
-	mov edi, edx
-	mov ax, 0x0007
-	mov bx, word[0x612]
-	call registerContainer
-
-	mov ax, dx
-	push eax
-	mov bx, word[0x612]
-	call giveContainer
-	pop eax
-
-	mov bx, word[0x612]
-	call mapContainer
-	ret

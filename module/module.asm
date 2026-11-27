@@ -92,7 +92,7 @@ __dircfg_end:
 
 times 512*6 - ($ - $$) db 0				; _LSECTOR+6 /bin/hwrld
 
-section .binary.hwrld vstart=0x4000200a
+section .binary.hwrld vstart=0x40001000
 __hwrld:
 %include "bin/hwrld.asm"
 __hwrld_end:

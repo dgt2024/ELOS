@@ -38,7 +38,7 @@ kernel/container.asm
  - getRawContainer -> AX=HANDLE -> EDX=PTR
  - deleteContainer -> AX=HANDLE -> NO OUTPUT
 kernel/procedure.asm
- - createProcedure -> ESI=NAME,AX=CODE CMHNDL,BL=FLAGS -> DX=PDHNDL
+ - createProcedure -> ESI=NAME,AX=CODE CMHNDL,BL=FLAGS,ECX=NAMESIZE -> DX=PDHNDL
  - registerProcedure -> AX=HNDL -> NO OUTPUT
 kernel/link.asm
  - giveContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
@@ -125,7 +125,7 @@ INT 0x30 Updates Page at EDX
 INT 0x31 Updates IDT
 INT 0x32 Updates CR3 (All pages)
 INT 0x33 Yields Scheduler
-INT 0x36 Driver ABI
+int 0x37 Driver ABI
 	DH=0;	pageAllocate
 	DH=1;	pageFree
 	DH=2;	registerContainer
@@ -148,13 +148,14 @@ INT 0x36 Driver ABI
 	DH=19;	registerInterrupt
 	DH=20;	sendNotification
 	DH=21;	readNotification
-INT 0x37 Priviledged ABI
+int 0x38 Priviledged ABI
 	DH=0;	loadDriver
 	DH=1;	runDevice
 	DH=2;	searchDevice
 	DH=3;	getRawAddress
 	DH=4;	userAllocate
 	DH=5;	readNotification
+	DH=6;	createProcedure
 
 **PCI init structure**
 

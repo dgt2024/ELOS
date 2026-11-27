@@ -19,6 +19,7 @@ generalError:
 %include "kernel/scheduler.asm"
 %include "kernel/interrupt.asm"
 %include "kernel/notification.asm"
+%include "kernel/user.asm"
 %include "driver/driver.asm"
 %include "driver/syscall.asm"
 %include "device/device.asm"

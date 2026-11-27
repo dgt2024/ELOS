@@ -18,10 +18,10 @@ times 0x20 - ($ - pit_fdt) db 0
 	mov ax, 0 ; log
 	mov dh, 13
 	mov bl, 6
-	int 0x36
+	int 0x37
 	
 	mov dh, 11
-	int 0x36
+	int 0x37
 	ret
 
 pit_initStr:

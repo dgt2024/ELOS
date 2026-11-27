@@ -47,7 +47,6 @@ startScheduler_loop:
 	mov word[0x574], 0x19
 
 startScheduler_ring1:
-	
 	mov ds, ax
 	mov es, ax
 	mov fs, ax
@@ -66,9 +65,15 @@ startScheduler_afterYield:
 	jmp startScheduler_loop
 
 yieldScheduler:
+	cli
 	push eax
 	mov al, 0x20
 	out 0x20, al
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
 	pop eax
 
 	cmp word[0x610], 0

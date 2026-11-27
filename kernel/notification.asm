@@ -25,10 +25,6 @@ sendNotification_error:
 	stc
 	ret
 
-sendNotification_c:
-	cli
-	jmp $
-
 readNotification:
 	cmp byte[0x200052], 0
 	je readNotification_none

@@ -15,18 +15,20 @@ registerInterrupt_err:
 	ret
 
 IRQCall:
+	cli
 	mov dword[0x614], esp
-	mov word[0x580], 0x21
-	mov dword[0x57c], 0x7400
-	mov dword[0x578], 0x1202
-	mov word[0x574], 0x19
-	mov dword[0x570], IRQCall_r1
+	mov word[0x5a0], 0x21
+	mov dword[0x59c], 0x7400
+	mov dword[0x598], 0x1002
+	mov word[0x594], 0x19
+	mov dword[0x590], IRQCall_switch
 
-	mov esp, 0x570
+	mov word[0x504], 0x7a00
+
+	mov esp, 0x590
 	iretd
 
-IRQCall_r1:
-	cli
+IRQCall_switch:
 	pushad
 	mov ax, word[0x700]
 	mov bl, 2
@@ -35,7 +37,6 @@ IRQCall_r1:
 	movzx eax, byte[0x702]
 	mov ax, word[0x3000+eax*2]
 	mov bl, 3
-	mov cl, 1
 	call runDevice
 	mov ax, word[0x700]
 	mov bl, 6
@@ -45,5 +46,15 @@ IRQCall_r1:
 	int 0x35
 
 IRQCall_return:
+	cli
+	mov word[0x504], 0x7800
+
 	mov esp, dword[0x614]
 	iretd
+
+	push eax
+	mov eax, 0x77ec
+	mov dr0, eax
+	mov eax, 0xd0001
+	mov dr7, eax
+	pop eax

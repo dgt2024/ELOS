@@ -23,6 +23,7 @@ startScheduler_loop:
 	jz startScheduler_afterYield
 
 	mov word[0x610], cx
+	cli
 
 	add dx, 0x60
 	mov cr3, edx ; Set CR3

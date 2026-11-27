@@ -17,7 +17,7 @@ idtTable:
 fileDescriptorTable:
 	; kernel:
 	dw 0x07e0
-	db 0x06
+	db 0x07
 	; kernelproc:
 	dw 0x0900
 	db 0x02

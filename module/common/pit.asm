@@ -4,7 +4,8 @@ times 0x20 - ($ - pit_fdt) db 0
 	; set up channel 0 to yield
 	mov dword[0x902], 0xae000008
 	mov word[0x900], yieldScheduler
-	int 0x31
+	mov dh, 1
+	int 0x41
 
 	mov al, 0x34
 	out 0x43, al
@@ -18,10 +19,10 @@ times 0x20 - ($ - pit_fdt) db 0
 	mov ax, 0 ; log
 	mov dh, 13
 	mov bl, 6
-	int 0x37
+	int 0x40
 	
 	mov dh, 11
-	int 0x37
+	int 0x40
 	ret
 
 pit_initStr:

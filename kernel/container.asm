@@ -37,8 +37,12 @@ getRawContainer:
 	; Null flags mean non-existent
 	mov dx, word[eax*8+0x1fff8] ; Container.flags
 	test dx, dx
-	jz generalError
+	jz getRawContainer_error
 	
 	mov edx, dword[eax*8+0x1fffc] ; Container.pointer
 	clc ; Success
+	ret
+
+getRawContainer_error:
+	stc
 	ret

@@ -5,8 +5,11 @@ sendNotification:
 	or dx, 0x0003
 	mov dword[0x4020], edx
 
-	mov edx, 0x204000 ; map here
-	int 0x30
+	push edx
+	mov eax, 0x204000 ; map here
+	mov dh, 0
+	int 0x41
+	pop edx
 
 	cmp byte[0x204052], 0x40
 	jae sendNotification_error

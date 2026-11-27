@@ -1,31 +1,19 @@
 kernelABIStart:
-	; INT 0x30 Update Page
+	; int 0x30 Return from ISR
 	mov dword[0x982], 0xae000008
-	mov word[0x980], kernelABIUpdatePage
-	; INT 0x31 Update IDT
-	mov dword[0x98a], 0xae000008
-	mov word[0x988], kernelABIUpdateIDT
-	; INT 0x32 Update CR3
-	mov dword[0x992], 0xae000008
-	mov word[0x990], kernelABIUpdateCR3
-	; INT 0x33 Yield
-	mov dword[0x99a], 0xae000008
-	mov word[0x998], yieldScheduler
-	; INT 0x34 Set state down
-	mov dword[0x9a2], 0xae000008
-	mov word[0x9a0], kernelABIDown
-	; INT 0x35 Return from ISR
-	mov dword[0x9aa], 0xae000008
-	mov word[0x9a8], IRQCall_return
-	; INT 0x36 Create Procedure
-	mov dword[0x9b2], 0xae000008
-	mov word[0x9b0], createProcedure
-	; INT 0x37 Driver ABI
-	mov dword[0x9ba], 0xae000019
-	mov word[0x9b8], kernelABIDriver
-	; INT 0x38 Priviledged ABI
-	mov dword[0x9c2], 0xae000019
-	mov word[0x9c0], kernelABIPriviledge
+	mov word[0x980], IRQCall_return
+	; int 0x40 Driver ABI
+	mov dword[0xa02], 0xae000019
+	mov word[0xa00], kernelABIDriver
+	; int 0x41 Update Page
+	mov dword[0xa0a], 0xae000008
+	mov word[0xa08], kernelABIDriverR0
+	; int 0x42 Priviledged ABI
+	mov dword[0xa12], 0xae000019
+	mov word[0xa10], kernelABIPriviledge
+	; int 0x43 Priviledged ABI
+	mov dword[0xa1a], 0xae000008
+	mov word[0xa18], kernelABIPriviledgeR0
 	; TSS setup
 	mov word[0x504], 0x7800
 	mov word[0x508], 0x10
@@ -34,48 +22,6 @@ kernelABIStart:
 	mov word[0x560], 0x1300
 	mov word[0x3ff8], 0x0003
 	ret
-
-kernelABIUpdatePage:
-	mov byte[0x200032], 0x30 ; last syscall #
-	mov byte[0x200033], 0 ; last syscall function
-	inc word[0x200036]
-	
-	invlpg [edx]
-	iretd
-
-kernelABIUpdateIDT:
-	mov byte[0x200032], 0x31 ; last syscall #
-	mov byte[0x200033], 0 ; last syscall function
-	inc word[0x200036]
-	
-	lidt [idtTable]
-	iretd
-
-kernelABIUpdateCR3:
-	mov byte[0x200032], 0x32 ; last syscall #
-	mov byte[0x200033], 0 ; last syscall function
-	inc word[0x200036]
-	
-	push eax
-	mov eax, cr3
-	mov cr3, eax
-	pop eax
-	
-	iretd
-
-kernelABIDown:
-	cmp byte[esp+3], 0x80
-	jae kernelABIDown_skip
-
-	mov byte[0x200032], 0x34 ; last syscall #
-	mov byte[0x200033], dh ; last syscall function
-	inc word[0x200036] ; syscall count
-
-	and byte[0x200030], 0xfd ; set down
-	jmp yieldScheduler
-
-kernelABIDown_skip:
-	iretd
 
 kernelABIDriver:
 	cmp byte[esp+3], 0x80
@@ -86,10 +32,6 @@ kernelABIDriver:
 	iretd
 
 kernelABIDriver_cont:
-	mov byte[0x200032], 0x36 ; last syscall #
-	mov byte[0x200033], dh ; last syscall function
-	inc word[0x200036] ; syscall count
-
 	movzx edx, dh
 	call dword[kernelABIDriver_lookup+edx*4]
 	pushfd
@@ -120,8 +62,26 @@ kernelABIDriver_lookup:
 	dd sendNotification
 	dd readNotification
 
+kernelABIDriverR0:
+	cmp byte[esp+3], 0x80
+	jae kernelABIDriverR0_cont
+
+	cmp byte[esp+3], 0x40
+	jb kernelABIDriverR0_cont
+	iretd
+
+kernelABIDriverR0_cont:
+	movzx edx, dh
+	call dword[kernelABIDriverR0_lookup+edx*4]
+	iretd
+
+kernelABIDriverR0_lookup:
+	dd userUpdatePage
+	dd userUpdateIDT
+	dd userUpdateCR3
+
 kernelABIPriviledge:
-	mov byte[0x200032], 0x37 ; last syscall #
+	mov byte[0x200032], 0x38 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
 
@@ -138,3 +98,19 @@ kernelABIPriviledge_lookup:
 	dd getRawAddress
 	dd userAllocate
 	dd readNotification
+
+kernelABIPriviledgeR0:
+	mov byte[0x200032], 0x39 ; last syscall #
+	mov byte[0x200033], dh ; last syscall function
+	inc word[0x200036] ; syscall count
+
+	movzx edx, dh
+	call dword[kernelABIPriviledgeR0_lookup+edx*4]
+	pushfd
+	pop dword[esp+8]
+	iretd
+
+kernelABIPriviledgeR0_lookup:
+	dd userSetStateDown
+	dd createProcedure
+	dd userYieldScheduler

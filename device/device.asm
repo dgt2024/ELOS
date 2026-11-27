@@ -32,7 +32,11 @@ runDevice_driverAddr:
 
 	mov eax, dword[0x200074]
 	mov dword[0x20007c], eax
-	int 0x32
+
+	push edx
+	mov dh, 2
+	int 0x41
+	pop edx
 
 	pop eax ; reload
 
@@ -56,7 +60,9 @@ runDevice_driverCall:
 
 	mov eax, dword[esp+8]
 	mov dword[0x20007c], eax
-	int 0x32
+
+	mov dh, 2
+	int 0x41
 	
 runDevice_driverCallReturn:
 	popf

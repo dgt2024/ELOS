@@ -6,7 +6,7 @@ times 0x20 - ($ - ldfs_fdt) db 0
 	mov al, 0x00
 	mov ebx, "LDFS"
 	mov dh, 15
-	int 0x37
+	int 0x40
 	ret
 
 ldfs_readFunc:
@@ -27,7 +27,7 @@ ldfs_readFunc_loop:
 	mov ax, word[ldfs_disk]
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 	popad
 
 	mov esi, ldfs_free
@@ -107,7 +107,7 @@ ldfs_readFunc_readLoop:
 	mov ax, word[ldfs_disk]
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 	popad
 
 	add edi, 508 ; next sector
@@ -151,7 +151,7 @@ ldfs_ctrlFunc:
 
 	mov eax, "PCI "
 	mov dh, 14
-	int 0x37
+	int 0x40
 
 	mov ax, dx ; destination: PCI
 
@@ -159,7 +159,7 @@ ldfs_ctrlFunc:
 	mov ecx, 0
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 
 	mov eax, dword[ldfs_mainDevType]
 
@@ -176,7 +176,7 @@ ldfs_ctrlFunc:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x37
+	int 0x40
 	pop ecx
 
 	mov word[ldfs_disk], cx

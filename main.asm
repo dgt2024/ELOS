@@ -1,4 +1,4 @@
-_LSECTOR equ 16
+_LSECTOR equ 17
 section .boot vstart=0x7c00
 use16
 %include "boot/boot.asm"
@@ -9,9 +9,6 @@ times 504 - ($ - $$) db 0
 	dd _LSECTOR				; 0x7df8
 	dw __root_end - __root	; 0x7dfc
 	dw 0xaa55				; 0x7dfe
-generalError:
-	stc
-	ret
 %include "kernel/memory.asm"
 %include "kernel/container.asm"
 %include "kernel/procedure.asm"
@@ -23,7 +20,7 @@ generalError:
 %include "driver/driver.asm"
 %include "driver/syscall.asm"
 %include "device/device.asm"
-times 512 * 7 - ($ - $$) db 0
+times 512 * 8 - ($ - $$) db 0
 section .program vstart=0x40001000
 %include "device/proc.asm"
 times 512 * 2 - ($ - $$) db 0

@@ -121,11 +121,11 @@ All functions receive a pointer and size as arguments
 0x020: idrv  = initializes driver itself : NOT A POINTER
 0xffc: DDHNDL
 
-INT 0x30 Updates Page at EDX
+int 0x41 Updates Page at EDX
 INT 0x31 Updates IDT
 INT 0x32 Updates CR3 (All pages)
 INT 0x33 Yields Scheduler
-int 0x37 Driver ABI
+int 0x40 Driver ABI
 	DH=0;	pageAllocate
 	DH=1;	pageFree
 	DH=2;	registerContainer
@@ -148,7 +148,7 @@ int 0x37 Driver ABI
 	DH=19;	registerInterrupt
 	DH=20;	sendNotification
 	DH=21;	readNotification
-int 0x38 Priviledged ABI
+int 0x42 Priviledged ABI
 	DH=0;	loadDriver
 	DH=1;	runDevice
 	DH=2;	searchDevice

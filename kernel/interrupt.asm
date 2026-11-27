@@ -43,7 +43,7 @@ IRQCall_switch:
 	mov cl, 0
 	call runDevice
 	popad
-	int 0x35
+	int 0x30
 
 IRQCall_return:
 	cli

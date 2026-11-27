@@ -50,7 +50,7 @@ endDriver:
 	mov al, 2
 	mov ebx, dword[0x180000-4+eax*4] 
 	mov dh, 1
-	int 0x37 ; free memory
+	int 0x40 ; free memory
 
 	movzx eax, word[0x80000ffc]
 	mov dword[0x180000-4+eax*4], 0
@@ -80,8 +80,9 @@ loadDriver:
 	or ax, 0x0003
 	mov dword[0x4010], eax
 
-	mov edx, 0x202000
-	int 0x30
+	mov eax, 0x202000
+	mov dh, 0
+	int 0x41
 
 	mov eax, dword[loadDriver_data]
 
@@ -89,8 +90,9 @@ loadDriver:
 	or ax, 0x0003
 	mov dword[0x4018], eax
 
-	mov edx, 0x203000
-	int 0x30
+	mov eax, 0x203000
+	mov dh, 0
+	int 0x41
 
 	mov eax, dword[loadDriver_data]
 
@@ -112,8 +114,9 @@ loadDriver:
 	or ax, 0x0003
 	mov dword[0x4018], eax
 
-	mov edx, 0x203000
-	int 0x30
+	mov eax, 0x203000
+	mov dh, 0
+	int 0x41
 
 	mov eax, dword[esp]
 	add eax, 0x2000 ; page table
@@ -124,8 +127,9 @@ loadDriver:
 	or ax, 0x0003
 	mov dword[0x4018], eax
 
-	mov edx, 0x203000
-	int 0x30
+	mov eax, 0x203000
+	mov dh, 0
+	int 0x41
 
 	mov eax, dword[esp]
 	or ax, 0x0003 ; code (R/W)

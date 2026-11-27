@@ -23,12 +23,12 @@ times 0x20 - ($ - pic_fdt) db 0
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x37
+	int 0x40
 
 	mov al, 0x00
 	mov ebx, "PIC "
 	mov dh, 15
-	int 0x37
+	int 0x40
 
 	mov ax, dx
 	mov word[0x700], ax

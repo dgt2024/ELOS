@@ -5,20 +5,20 @@ times 0x20 - ($ - ata_fdt) db 0
 	mov al, 0x00
 	mov ebx, "ATA "
 	mov dh, 15
-	int 0x37
+	int 0x40
 
 	mov word[ata_pciData+1], dx
 
 	mov eax, "PCI "
 	mov dh, 14
-	int 0x37
+	int 0x40
 
 	mov ax, dx ; destination: PCI
 
 	mov edi, ata_pciData
 	mov dh, 13
 	mov bl, 0
-	int 0x37
+	int 0x40
 	ret
 
 ata_initFunc:
@@ -27,14 +27,14 @@ ata_initFunc:
 	mov ebx, ecx
 	mov al, 0x01
 	mov dh, 15
-	int 0x37
+	int 0x40
 	push edx
 
 	mov word[ata_initFunc_pciData], dx ; dx=PCI DVHNDL
 
 	mov eax, "PCI "
 	mov dh, 14
-	int 0x37
+	int 0x40
 
 	mov ax, dx ; destination: PCI
 
@@ -42,7 +42,7 @@ ata_initFunc:
 	mov cl, 0x8
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 
 	movzx eax, byte[ata_deviceCount]
 	lea ebp, [ata_devices+eax*8]
@@ -60,7 +60,7 @@ ata_initFunc:
 	mov cl, 0x10
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 
 	mov ax, word[ata_initFunc_pciData] ; BAR0 address
 	mov word[ebp], ax
@@ -69,7 +69,7 @@ ata_initFunc:
 	mov cl, 0x14
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 
 	mov ax, word[ata_initFunc_pciData] ; BAR0 address
 	mov word[ebp+4], ax
@@ -87,7 +87,7 @@ ata_initFunc_nativePrimary:
 	mov cl, 0x18
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 
 	mov ax, word[ata_initFunc_pciData] ; BAR0 address
 	mov word[ebp+2], ax
@@ -96,7 +96,7 @@ ata_initFunc_nativePrimary:
 	mov cl, 0x1c
 	mov dh, 13
 	mov bl, 2
-	int 0x37
+	int 0x40
 
 	mov ax, word[ata_initFunc_pciData] ; BAR0 address
 	mov word[ebp+6], ax
@@ -114,7 +114,7 @@ ata_initFunc_nativeSecondary:
 	pop edx
 	mov ax, dx ; delete dummy
 	mov dh, 16
-	int 0x37
+	int 0x40
 
 	pop ecx ; PCI device
 	mov ebx, ecx
@@ -172,7 +172,7 @@ ata_initFunc_poll:
 	or bl, cl
 	mov al, 0x01
 	mov dh, 15
-	int 0x37
+	int 0x40
 
 	cmp word[ata_mainDevice], 0
 	jne ata_initFunc_notmain
@@ -190,7 +190,7 @@ ata_initFunc_notmain:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 13
 	mov bl, 6
-	int 0x37
+	int 0x40
 ata_initFunc_nodev:
 	inc ecx
 	loop ata_initFunc_find
@@ -268,15 +268,15 @@ ata_fnshFunc:
 	jne ata_fnshFunc_NA
 	mov eax, edx
 	mov dh, 14
-	int 0x37
+	int 0x40
 	
 	mov ax, dx ; destination: LDFS
 	mov dh, 16
-	int 0x37
+	int 0x40
 
 	mov eax, "LDFS"
 	mov dh, 14
-	int 0x37
+	int 0x40
 
 	; print string2 on COM1
 	mov ax, dx
@@ -284,7 +284,7 @@ ata_fnshFunc:
 	mov cx, word[ata_mainDevice]
 	mov dh, 13
 	mov bl, 7
-	int 0x37
+	int 0x40
 ata_fnshFunc_NA:
 	ret
 

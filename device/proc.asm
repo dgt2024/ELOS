@@ -9,7 +9,7 @@ kernelProcMain_initLoop:
 
 	push esi
 	mov dh, 0
-	int 0x38
+	int 0x42
 	pop esi
 
 	add esi, 3
@@ -25,11 +25,11 @@ kernelProcMain_initLoop:
 	mov ax, 0 ; linux' /dev/ttyS0
 	mov dh, 1
 	mov bl, 6
-	int 0x38
+	int 0x42
 
 	mov eax, "OUT "
 	mov dh, 2
-	int 0x38
+	int 0x42
 
 	mov ax, dx ; destination: PCI
 
@@ -38,12 +38,12 @@ kernelProcMain_initLoop:
 	mov ecx, bootStr_end - bootStr
 	mov dh, 1
 	mov bl, 6
-	int 0x38
+	int 0x42
 
 	; read mod/ldfs
 	mov eax, "LDFS"
 	mov dh, 2
-	int 0x38
+	int 0x42
 
 	mov ax, dx
 
@@ -52,7 +52,7 @@ kernelProcMain_initLoop:
 	mov ecx, listCSVFilename_end - listCSVFilename
 	mov dh, 1
 	mov bl, 2
-	int 0x38
+	int 0x42
 	pop eax
 
 	mov edi, listCSVFilename_end
@@ -68,7 +68,7 @@ listCSVLoop:
 	mov eax, edi ; here should be the address of the driver
 
 	mov dh, 3
-	int 0x38
+	int 0x42
 
 	mov ebp, edx
 
@@ -92,7 +92,7 @@ listCSVLoop:
 
 	mov dh, 1
 	mov bl, 2
-	int 0x38
+	int 0x42
 
 	pop ebp
 
@@ -105,7 +105,7 @@ listCSVLoop:
 	push eax
 	push edi
 	mov dh, 0
-	int 0x38
+	int 0x42
 	pop edi
 	pop eax
 
@@ -121,11 +121,11 @@ listCSVLoop:
 
 	mov al, 0
 	mov dh, 4
-	int 0x38
+	int 0x42
 
 	mov eax, "OUT "
 	mov dh, 2
-	int 0x38
+	int 0x42
 
 	mov word[shellDevice], dx ; destination: OUT
 
@@ -135,17 +135,18 @@ shellLoop_main:
 	mov ax, word[shellDevice]
 	mov dh, 1
 	mov bl, 6
-	int 0x38
+	int 0x42
 
 	mov edi, 0x40002000
 
 shellLoop:
 	sti
-	int 0x34
+	mov dh, 0
+	int 0x43
 
 	push edi
 	mov dh, 5
-	int 0x38
+	int 0x42
 	pop edi
 
 	cmp bl, 0x10
@@ -182,7 +183,7 @@ shellLoop_noWrite:
 	mov ax, word[shellDevice]
 	mov dh, 1
 	mov bl, 6
-	int 0x38
+	int 0x42
 	pop edi
 	jmp shellLoop
 
@@ -196,7 +197,7 @@ shellLoop_run:
 
 	mov eax, "LDFS"
 	mov dh, 2
-	int 0x38
+	int 0x42
 
 	mov ax, dx
 
@@ -205,11 +206,11 @@ shellLoop_run:
 	mov edi, 0x40002000
 	mov dh, 1
 	mov bl, 2
-	int 0x38
+	int 0x42
 
 	mov al, 0
 	mov dh, 4
-	int 0x38
+	int 0x42
 
 	pop ecx
 	pop edi ; pointer to code
@@ -228,7 +229,11 @@ shellLoop_run:
 	mov esi, 0x40002000
 	mov bl, 0xdf
 
-	int 0x36
+	mov dh, 1
+	int 0x43
+
+	mov dh, 2
+	int 0x43
 	jmp shellLoop_main
 
 shellDevice:

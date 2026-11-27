@@ -24,25 +24,25 @@ createProcedure:
 	or dx, 0x0007
 
 	; Create temporal virtual address
-	mov dword[0x4000], edx
+	mov dword[0x4020], edx
 
 	push edx
 	add edx, 0x1000
-	mov dword[0x4008], edx
+	mov dword[0x4028], edx
 	pop edx
 
-	invlpg[0x200000]
-	invlpg[0x201000]
+	invlpg[0x204000]
+	invlpg[0x205000]
 
 	; Clear CR3 (page directory)
 	push ecx
-	mov edi, 0x200200
+	mov edi, 0x204200
 	mov ecx, 0x200
 	xor eax, eax
 	rep stosd
 	pop ecx
 
-	mov edi, 0x200000
+	mov edi, 0x204000
 	; edi=virtual page data,edx=physical page data,cx=PDHNDL
 
 	pop ax ; code container HNDL
@@ -148,6 +148,13 @@ createProcedure_noClamp:
 	call mapContainer
 
 	ret
+
+endProcedure:
+	movzx edi, word[0x610]
+	lea edi, [edi-0x8000]
+	neg edi
+	mov word[0x10002+edi*2], 0
+	jmp yieldScheduler
 
 registerProcedure:
 	mov esi, 0x10000

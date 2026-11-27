@@ -158,6 +158,12 @@ getRawAddress_map:
 	or si, 0x0003
 	mov dword[0x4020], esi
 
-	mov edx, 0x204000 ; map here
-	int 0x30
+	push eax
+	
+	mov eax, 0x204000 ; map here
+	mov dh, 0
+	int 0x41
+
+	pop eax
+	mov edx, 0x204000
 	ret

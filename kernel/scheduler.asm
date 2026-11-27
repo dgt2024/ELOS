@@ -22,8 +22,10 @@ startScheduler_loop:
 	test byte[0x200030], 0x02
 	jz startScheduler_afterYield
 
-	mov word[0x610], cx
 	cli
+	mov ax, word[edi-2]
+	mov word[0x612], ax
+	mov word[0x610], cx
 
 	add dx, 0x60
 	mov cr3, edx ; Set CR3

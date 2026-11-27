@@ -20,6 +20,9 @@ kernelABIStart:
 	; INT 0x36 Driver ABI
 	mov dword[0x9b2], 0xae000008
 	mov word[0x9b0], kernelABIDriver
+	; INT 0x37 Priviledged ABI
+	mov dword[0x9ba], 0xae000008
+	mov word[0x9b8], kernelABIPriviledge
 	; TSS setup
 	mov word[0x504], 0x7800
 	mov word[0x508], 0x10
@@ -58,6 +61,9 @@ kernelABIUpdateCR3:
 	iretd
 
 kernelABIDown:
+	cmp byte[esp+3], 0x80
+	jae kernelABIDown_skip
+
 	mov byte[0x200032], 0x34 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
@@ -65,8 +71,19 @@ kernelABIDown:
 	and byte[0x200030], 0xfd ; set down
 	jmp yieldScheduler
 
+kernelABIDown_skip:
+	iretd
+
 kernelABIDriver:
-	mov byte[0x200032], 0x35 ; last syscall #
+	cmp byte[esp+3], 0x80
+	jae kernelABIDriver_cont
+
+	cmp byte[esp+3], 0x40
+	jb kernelABIDriver_cont
+	iretd
+
+kernelABIDriver_cont:
+	mov byte[0x200032], 0x36 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
 
@@ -99,3 +116,40 @@ kernelABIDriver_lookup:
 	dd registerInterrupt
 	dd sendNotification
 	dd readNotification
+
+kernelABIPriviledge:
+	mov byte[0x200032], 0x37 ; last syscall #
+	mov byte[0x200033], dh ; last syscall function
+	inc word[0x200036] ; syscall count
+
+	movzx edx, dh
+	call dword[kernelABIPriviledge_lookup+edx*4]
+	pushfd
+	pop dword[esp+8]
+	iretd
+
+kernelABIPriviledge_lookup:
+	dd loadDriver
+	dd runDevice
+	dd searchDevice
+	dd getRawAddress
+	dd userAllocate
+	dd readNotification
+
+userAllocate:
+	call pageAllocate
+
+	mov edi, edx
+	mov ax, 0x0007
+	mov bx, word[0x612]
+	call registerContainer
+
+	mov ax, dx
+	push eax
+	mov bx, word[0x612]
+	call giveContainer
+	pop eax
+
+	mov bx, word[0x612]
+	call mapContainer
+	ret

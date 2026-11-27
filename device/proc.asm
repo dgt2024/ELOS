@@ -8,8 +8,8 @@ kernelProcMain_initLoop:
 	mov bl, byte[esi+2]
 
 	push esi
-	mov dh, 17
-	int 0x36
+	mov dh, 0
+	int 0x37
 	pop esi
 
 	add esi, 3
@@ -23,36 +23,36 @@ kernelProcMain_initLoop:
 	mov edi, str
 	mov ecx, str_end-str
 	mov ax, 0 ; linux' /dev/ttyS0
-	mov dh, 13
+	mov dh, 1
 	mov bl, 6
-	int 0x36
+	int 0x37
 
 	mov eax, "OUT "
-	mov dh, 14
-	int 0x36
+	mov dh, 2
+	int 0x37
 
 	mov ax, dx ; destination: PCI
 
 	; print string2 on OUT
 	mov edi, bootStr
 	mov ecx, bootStr_end - bootStr
-	mov dh, 13
+	mov dh, 1
 	mov bl, 6
-	int 0x36
+	int 0x37
 
 	; read mod/ldfs
 	mov eax, "LDFS"
-	mov dh, 14
-	int 0x36
+	mov dh, 2
+	int 0x37
 
 	mov ax, dx
 
 	push eax
 	mov edi, listCSVFilename
 	mov ecx, listCSVFilename_end - listCSVFilename
-	mov dh, 13
+	mov dh, 1
 	mov bl, 2
-	int 0x36
+	int 0x37
 	pop eax
 
 	mov edi, listCSVFilename_end
@@ -67,8 +67,8 @@ listCSVLoop:
 	dec edi
 	mov eax, edi ; here should be the address of the driver
 
-	mov dh, 18
-	int 0x36
+	mov dh, 3
+	int 0x37
 
 	mov ebp, edx
 
@@ -90,9 +90,9 @@ listCSVLoop:
 
 	not ecx ; get size of filename
 
-	mov dh, 13
+	mov dh, 1
 	mov bl, 2
-	int 0x36
+	int 0x37
 
 	pop ebp
 
@@ -104,8 +104,8 @@ listCSVLoop:
 
 	push eax
 	push edi
-	mov dh, 17
-	int 0x36
+	mov dh, 0
+	int 0x37
 	pop edi
 	pop eax
 
@@ -120,29 +120,12 @@ listCSVLoop:
 	sti
 
 	mov al, 0
-	mov dh, 0
-	int 0x36
-
-	mov edi, edx
-	mov ax, 0x0007
-	mov bx, 0x0002
-	mov dh, 2
-	int 0x36
-
-	mov ax, dx
-	push eax
-	mov bx, 0x0002
-	mov dh, 7
-	int 0x36
-	pop eax
-
-	mov bx, 0x0002
-	mov dh, 8
-	int 0x36
+	mov dh, 4
+	int 0x37
 
 	mov eax, "OUT "
-	mov dh, 14
-	int 0x36
+	mov dh, 2
+	int 0x37
 
 	mov word[shellDevice], dx ; destination: OUT
 
@@ -150,9 +133,9 @@ shellLoop_main:
 	mov edi, shell
 	mov ecx, shell_end - shell
 	mov ax, word[shellDevice]
-	mov dh, 13
+	mov dh, 1
 	mov bl, 6
-	int 0x36
+	int 0x37
 
 	mov edi, 0x40002000
 
@@ -161,8 +144,8 @@ shellLoop:
 	int 0x34
 
 	push edi
-	mov dh, 21
-	int 0x36
+	mov dh, 5
+	int 0x37
 	pop edi
 
 	cmp bl, 0x10
@@ -170,9 +153,6 @@ shellLoop:
 	jmp shellLoop
 
 shellLoop_keyDown:
-	cmp cl, 0x4e
-	je shellLoop_reload
-
 	cmp ch, 0x0a
 	je shellLoop_run
 
@@ -200,32 +180,10 @@ shellLoop_noWrite:
 	mov edi, shellStr
 	mov ecx, 1
 	mov ax, word[shellDevice]
-	mov dh, 13
+	mov dh, 1
 	mov bl, 6
-	int 0x36
+	int 0x37
 	pop edi
-	jmp shellLoop
-
-shellLoop_reload:
-	mov edi, 0x40002000
-	mov al, 0
-	mov ecx, 4096
-	rep scasb
-
-	lea ecx, [edi-0x40002000]
-	dec edi
-
-	push ecx
-	mov eax, "OUT "
-	mov dh, 14
-	int 0x36
-	pop ecx
-
-	mov ax, dx
-	mov edi, 0x40002000
-	mov dh, 13
-	mov bl, 6
-	int 0x36
 	jmp shellLoop
 
 shellLoop_run:
@@ -236,16 +194,16 @@ shellLoop_run:
 	push edi
 	push ecx
 	mov eax, "LDFS"
-	mov dh, 14
-	int 0x36
+	mov dh, 2
+	int 0x37
 	pop ecx
 
 	mov ax, dx
 
 	mov edi, 0x40002000
-	mov dh, 13
+	mov dh, 1
 	mov bl, 2
-	int 0x36
+	int 0x37
 	pop edi
 
 	pushad

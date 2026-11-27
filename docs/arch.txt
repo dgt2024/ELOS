@@ -7,6 +7,7 @@ BYTE		0x60c		RAM block count			>> BEFORE initializeMemory();
 DWORD		0x608		TID
 DWORD		0x60c		Total Allocated Memory
 WORD		0x610		PID
+WORD		0x612		PDHNDL
 DWORD		0x614		Interrupt Handler ESP
 BYTE		0x6ff		CPU flags [0:NX]
 WORD		0x700		Interrupt Device
@@ -124,7 +125,7 @@ INT 0x30 Updates Page at EDX
 INT 0x31 Updates IDT
 INT 0x32 Updates CR3 (All pages)
 INT 0x33 Yields Scheduler
-int 0x36 Driver ABI
+INT 0x36 Driver ABI
 	DH=0;	pageAllocate
 	DH=1;	pageFree
 	DH=2;	registerContainer
@@ -147,6 +148,13 @@ int 0x36 Driver ABI
 	DH=19;	registerInterrupt
 	DH=20;	sendNotification
 	DH=21;	readNotification
+INT 0x37 Priviledged ABI
+	DH=0;	loadDriver
+	DH=1;	runDevice
+	DH=2;	searchDevice
+	DH=3;	getRawAddress
+	DH=4;	userAllocate
+	DH=5;	readNotification
 
 **PCI init structure**
 

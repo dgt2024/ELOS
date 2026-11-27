@@ -125,7 +125,7 @@ ldfs_readFunc_nextItem_PUSH:
 	pop esi
 	pop edi
 ldfs_readFunc_nextItem:
-	add esi, 16
+	add esi, 24
 
 	cmp esi, ebp
 	ja ldfs_readFunc_unexistent

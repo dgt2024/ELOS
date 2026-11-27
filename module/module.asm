@@ -7,7 +7,7 @@ __root:
 	dd _LSECTOR+1
 __config_name:
 	db "config"
-times 8 - ($ - __config_name) db 0
+times 16 - ($ - __config_name) db 0
 
 	dw __bin_end - __bin
 	db 01010000b
@@ -15,7 +15,7 @@ times 8 - ($ - __config_name) db 0
 	dd _LSECTOR+2
 __bin_name:
 	db "bin"
-times 8 - ($ - __bin_name) db 0
+times 16 - ($ - __bin_name) db 0
 
 	dw __mod_end - __mod
 	db 01010000b
@@ -23,7 +23,7 @@ times 8 - ($ - __bin_name) db 0
 	dd _LSECTOR+3
 __mod_name:
 	db "mod"
-times 8 - ($ - __mod_name) db 0
+times 16 - ($ - __mod_name) db 0
 
 __root_end:
 times 512 - ($ - $$) db 0				; _LSECTOR+1 /config/
@@ -35,7 +35,7 @@ __config:
 	dd _LSECTOR+4
 __modcfg_name:
 	db "mod.cfg"
-times 8 - ($ - __modcfg_name) db 0
+times 16 - ($ - __modcfg_name) db 0
 
 	dw __dircfg_end - __dircfg
 	db 01010011b
@@ -43,7 +43,7 @@ times 8 - ($ - __modcfg_name) db 0
 	dd _LSECTOR+5
 __dircfg_name:
 	db "dir.cfg"
-times 8 - ($ - __dircfg_name) db 0
+times 16 - ($ - __dircfg_name) db 0
 
 __config_end:
 times 512*2 - ($ - $$) db 0				; _LSECTOR+2 /bin/
@@ -55,7 +55,7 @@ __bin:
 	dd _LSECTOR+6
 __hwrld_name:
 	db "hwrld"
-times 8 - ($ - __hwrld_name) db 0
+times 16 - ($ - __hwrld_name) db 0
 
 __bin_end:
 times 512*3 - ($ - $$) db 0				; _LSECTOR+3 /mod/
@@ -67,7 +67,7 @@ __mod:
 	dd _LSECTOR+7
 __pit_name:
 	db "pit.sys"
-times 8 - ($ - __pit_name) db 0
+times 16 - ($ - __pit_name) db 0
 
 	dw __ps2_end - __ps2
 	db 01010011b
@@ -75,7 +75,7 @@ times 8 - ($ - __pit_name) db 0
 	dd _LSECTOR+8
 __ps2_name:
 	db "ps2.sys"
-times 8 - ($ - __ps2_name) db 0
+times 16 - ($ - __ps2_name) db 0
 
 __mod_end:
 times 512*4 - ($ - $$) db 0				; _LSECTOR+4 /config/mod.cfg

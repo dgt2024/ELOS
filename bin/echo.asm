@@ -1,5 +1,4 @@
 __echo_main:
-	; this code has a "C translation"
 	mov eax, "OUT "
 	mov dh, 2
 	int 0x42
@@ -22,6 +21,7 @@ __echo_main:
 	mov bl, 6
 	int 0x42
 	
+	mov eax, 0
 	mov dh, 3
 	int 0x43
 

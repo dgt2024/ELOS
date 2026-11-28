@@ -164,6 +164,20 @@ mapContainer_newPT:
 	call giveContainer
 	pop edx
 
+	pushad
+	or dx, 0x0001
+	mov dword[0x4030], edx
+
+	mov eax, 0x206000
+	mov dh, 0
+	int 0x41
+
+	mov edi, 0x206000
+	mov ecx, 0x1000
+	mov al, 0
+	rep stosb
+	popad
+
 	inc byte[0x20402f] ; inc PDHNDL->PT#
 
 	pop edi ; save PD

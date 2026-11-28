@@ -1,5 +1,16 @@
-userAllocate: ; AX=flags
+userAllocate: ; BX=flags
 	push eax
+	mov edi, dword[0x200058]
+	movzx eax, al
+	and al, 0x0f
+	inc al
+	shl eax, 12
+	add dword[0x200058], eax
+	add dword[0x20005c], eax
+	pop eax
+
+	push edi
+	push ebx
 	call pageAllocate
 
 	mov edi, edx
@@ -17,6 +28,7 @@ userAllocate: ; AX=flags
 	mov bx, word[0x612]
 	call mapContainer
 	pop edx
+	pop edi
 	ret
 
 userCreateProcedure:
@@ -25,12 +37,12 @@ userCreateProcedure:
 	ret
 
 userCreateSingle:
-	mov ax, 0x0007
+	mov bx, 0x0007
 	call userAllocate
 	ret
 
 userCreateShare:
-	mov ax, 0x0187
+	mov bx, 0x0187
 	call userAllocate
 	ret
 

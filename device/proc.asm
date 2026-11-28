@@ -231,21 +231,18 @@ shellLoop_run:
 	mov dh, 4
 	int 0x42
 
-	pop edi ; pointer to code
+	pop esi ; pointer to code
 
 	push edx
 
-	inc edi
+	inc esi
 	mov ecx, 0x200
-	mov esi, edi
-	mov edi, 0x40004000
 	rep movsb
 
 	pop eax
 
 	movzx ecx, word[shellStrSize]
 	mov esi, 0x40003000
-; ESI=NAME,AX=CODE CMHNDL,BL=FLAGS,ECX=NAMESIZE,DX=DESC
 	mov bl, 0xdf
 
 	mov dh, 1

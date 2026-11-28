@@ -37,9 +37,9 @@ createProcedure:
 	; Clear CR3 (page directory)
 	push ecx
 	mov edi, 0x204000
-	mov ecx, 0x800
+	mov ecx, 0x2000
 	xor eax, eax
-	rep stosd
+	rep stosb
 	pop ecx
 
 	mov edi, 0x204000
@@ -70,7 +70,7 @@ createProcedure:
 	mov dword[edi+0x3c], eax ; PDHNDL->UPTIME
 	mov byte[edi+0x52], al ; PDHNDL->N#
 	mov dword[edi+0x54], eax ; PDHNDL->ALLOC#
-	mov dword[edi+0x58], eax ; PDHNDL->ALLOCADDR
+	mov dword[edi+0x58], 0x40003000 ; PDHNDL->ALLOCADDR
 	mov dword[edi+0x60], 0x5001 ; Kernel
 
 	; Set up PDPT

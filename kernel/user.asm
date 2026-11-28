@@ -19,6 +19,11 @@ userAllocate: ; AX=flags
 	pop edx
 	ret
 
+userCreateProcedure:
+	mov dx, word[0x612]
+	call createProcedure
+	ret
+
 userCreateSingle:
 	mov ax, 0x0007
 	call userAllocate
@@ -74,7 +79,7 @@ userAnswerShare:
 
 	pushad
 	movzx eax, bx
-	mov bx, cx
+	movzx ebx, cx
 	call mapContainer
 	popad
 
@@ -98,6 +103,16 @@ userEndProcedure:
 	not edi
 	lea edi, [0x10000+edi*2]
 	mov word[edi-4], 0
+
+	cmp word[0x200038], 0
+	je userEndProcedure_notify
+
+	mov ecx, eax
+	mov ax, word[0x200038]
+	mov bl, 0x03
+	call sendNotification
+
+userEndProcedure_notify:
 	jmp startScheduler_afterYield
 
 userSetStateDown:

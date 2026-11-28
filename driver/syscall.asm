@@ -124,6 +124,6 @@ kernelABIPriviledgeR0:
 
 kernelABIPriviledgeR0_lookup:
 	dd userSetStateDown
-	dd createProcedure
+	dd userCreateProcedure
 	dd userYieldScheduler
 	dd userEndProcedure

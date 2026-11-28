@@ -2,7 +2,7 @@ createProcedure:
 	push ax
 	push ecx ; Save title size
 	push esi ; Save title addr
-	push edx ; Save Parent TID
+	push dx ; Save Parent TID
 	push bx ; Save flags
 	push ax ; Save code container HNDL
 
@@ -36,8 +36,8 @@ createProcedure:
 
 	; Clear CR3 (page directory)
 	push ecx
-	mov edi, 0x204200
-	mov ecx, 0x200
+	mov edi, 0x204000
+	mov ecx, 0x800
 	xor eax, eax
 	rep stosd
 	pop ecx
@@ -65,8 +65,8 @@ createProcedure:
 	xor eax, eax
 	mov dword[edi+0x34], eax ; PDHNDL->SENT#|SYSC#
 
-	pop edx
-	mov dword[edi+0x38], edx ; PDHNDL->DESC.TID
+	pop dx
+	mov word[edi+0x38], dx ; PDHNDL->DESC
 	mov dword[edi+0x3c], eax ; PDHNDL->UPTIME
 	mov byte[edi+0x52], al ; PDHNDL->N#
 	mov dword[edi+0x54], eax ; PDHNDL->ALLOC#

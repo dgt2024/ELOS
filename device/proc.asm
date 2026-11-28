@@ -152,9 +152,6 @@ shellLoop:
 
 	cmp bl, 0x10
 	je shellLoop_keyDown
-
-	cmp bl, 0x01
-	je shellLoop_checkARGS
 	jmp shellLoop
 
 shellLoop_keyDown:
@@ -193,16 +190,6 @@ shellLoop_noWrite:
 	int 0x42
 	pop edi
 	jmp shellLoop
-
-shellLoop_checkARGS:
-	mov al, 0
-	mov bx, word[shellShare]
-	mov dh, 9
-	int 0x42
-
-	mov dh, 2
-	int 0x43
-	jmp shellLoop_main
 
 shellLoop_run:
 	mov byte[edi], ' '
@@ -264,9 +251,27 @@ shellLoop_run:
 	mov cx, word[shellShare]
 	int 0x42
 
-	mov dh, 2
+shellLoop_wait:
+	sti
+	mov dh, 0
 	int 0x43
-	jmp shellLoop_main
+
+	mov dh, 5
+	int 0x42
+
+	cmp bl, 0x01
+	je shellLoop_checkARGS
+
+	cmp bl, 0x03
+	je shellLoop_main
+	jmp shellLoop_wait
+
+shellLoop_checkARGS:
+	mov al, 0
+	mov bx, word[shellShare]
+	mov dh, 9
+	int 0x42
+	jmp shellLoop_wait
 
 shellLoop_runError:
 	mov edi, shellError

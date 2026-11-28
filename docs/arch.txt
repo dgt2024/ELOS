@@ -45,7 +45,7 @@ kernel/container.asm
  - getRawContainer -> AX=HANDLE -> EDX=PTR
  - deleteContainer -> AX=HANDLE -> NO OUTPUT
 kernel/procedure.asm
- - createProcedure -> ESI=NAME,AX=CODE CMHNDL,BL=FLAGS,ECX=NAMESIZE -> DX=PDHNDL
+ - createProcedure -> ESI=NAME,AX=CODE CMHNDL,BL=FLAGS,ECX=NAMESIZE,DX=DESC -> DX=PDHNDL
  - registerProcedure -> AX=HNDL -> NO OUTPUT
 kernel/link.asm
  - giveContainer -> AX=HNDL,BX=PDHNDL -> NO OUTPUT
@@ -92,7 +92,7 @@ Note: UDHNDLs seen as reserved
 00	EDI         ESI         EBP         ESP
 01	EBX         EDX         ECX         EAX
 02	EIP         EFLAGS      TID         O# S# P# PT#
-03	FLAGS S# SF MOBJ# SYSC# DESC.TID    UPTIME
+03	FLAGS S# SF MOBJ# SYSC# DESC  RFU   UPTIME
 04	BP0         BP1         BP2         BP3
 05	BPF   N# S# ALLOC#		ALLOCADDR	LASTSENT
 06 -> Page directory pointer table
@@ -189,6 +189,7 @@ b3=0: 00|CLASS|SUBCLASS|PROG IF (CLASS IF b2,SUBCLASS IF b1,PROG IF IF b0)
 0x00=IPC
 0x01=SHARE_REQ
 0x02=SHARE_ANS
+0x03=DESC_END
 
 0x10=KEY_DOWN
 0x11=KEY_UP

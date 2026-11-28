@@ -145,7 +145,6 @@ shellLoop:
 	sti
 	mov dh, 0
 	int 0x43
-
 	push edi
 	mov dh, 5
 	int 0x42
@@ -169,7 +168,7 @@ shellLoop_keyDown:
 	jne shellLoop_noBackspace
 
 	cmp edi, 0x40002000
-	jbe shellLoop
+	jb shellLoop
 
 	dec edi
 	mov byte[edi], 0
@@ -200,11 +199,13 @@ shellLoop_checkARGS:
 	mov bx, word[shellShare]
 	mov dh, 9
 	int 0x42
-	jmp shellLoop
+
+	mov dh, 2
+	int 0x43
+	jmp shellLoop_main
 
 shellLoop_run:
 	mov byte[edi], ' '
-	inc edi
 	push edi
 
 	mov edi, 0x40002000
@@ -243,6 +244,7 @@ shellLoop_run:
 	push ecx
 	push edx
 
+	inc edi
 	mov ecx, 0x200
 	mov esi, edi
 	mov edi, 0x40003000

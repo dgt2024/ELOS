@@ -29,7 +29,7 @@ __echo_wait:
 
 	mov ax, dx
 	mov edi, 0x40002009
-	mov ecx, 0xffffffff
+	mov ecx, 5
 	mov dh, 1
 	mov bl, 6
 	int 0x42

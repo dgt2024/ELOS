@@ -29,8 +29,8 @@ startScheduler_loop:
 startScheduler_run:
 	cli
 	mov ax, word[edi-2]
-	mov word[0x612], ax
 	mov word[0x610], cx
+	mov word[0x612], ax
 
 	add dx, 0x60
 	mov cr3, edx ; Set CR3

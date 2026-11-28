@@ -132,6 +132,11 @@ listCSVLoop:
 	mov word[shellDevice], dx ; destination: OUT
 
 shellLoop_main:
+	mov edi, 0x40003000
+	mov ecx, 0x1000
+	mov al, 0
+	rep stosb
+
 	mov edi, shell
 	mov ecx, shell_end - shell
 	mov ax, word[shellDevice]
@@ -139,7 +144,7 @@ shellLoop_main:
 	mov bl, 6
 	int 0x42
 
-	mov edi, 0x40002000
+	mov edi, 0x40003000
 
 shellLoop:
 	sti
@@ -164,8 +169,8 @@ shellLoop_keyDown:
 	cmp ch, 0x08
 	jne shellLoop_noBackspace
 
-	cmp edi, 0x40002000
-	jb shellLoop
+	cmp edi, 0x40003000
+	jbe shellLoop
 
 	dec edi
 	mov byte[edi], 0
@@ -193,14 +198,17 @@ shellLoop_noWrite:
 
 shellLoop_run:
 	mov byte[edi], ' '
+	lea eax, [edi-0x40003000]
+	mov word[shellStrSize], ax
+
 	push edi
 
-	mov edi, 0x40002000
+	mov edi, 0x40003000
 	mov al, ' '
 	mov ecx, 0xffffffff
 	repne scasb
 
-	mov byte[edi-1], 0
+	mov byte[edi-1], ';'
 
 	not ecx
 	push ecx
@@ -211,9 +219,9 @@ shellLoop_run:
 
 	mov ax, dx
 
-	mov ecx, dword[esp]
+	pop ecx
 
-	mov edi, 0x40002000
+	mov edi, 0x40003000
 	mov dh, 1
 	mov bl, 2
 	int 0x42
@@ -223,33 +231,25 @@ shellLoop_run:
 	mov dh, 4
 	int 0x42
 
-	pop ecx
 	pop edi ; pointer to code
 
-	mov byte[edi], 0
-
-	push ecx
 	push edx
 
 	inc edi
 	mov ecx, 0x200
 	mov esi, edi
-	mov edi, 0x40003000
+	mov edi, 0x40004000
 	rep movsb
 
 	pop eax
-	pop ecx
 
-	mov esi, 0x40002000
+	movzx ecx, word[shellStrSize]
+	mov esi, 0x40003000
+; ESI=NAME,AX=CODE CMHNDL,BL=FLAGS,ECX=NAMESIZE,DX=DESC
 	mov bl, 0xdf
 
 	mov dh, 1
 	int 0x43
-
-	mov ax, dx
-	mov dh, 6
-	mov cx, word[shellShare]
-	int 0x42
 
 shellLoop_wait:
 	sti
@@ -259,18 +259,8 @@ shellLoop_wait:
 	mov dh, 5
 	int 0x42
 
-	cmp bl, 0x01
-	je shellLoop_checkARGS
-
 	cmp bl, 0x03
 	je shellLoop_main
-	jmp shellLoop_wait
-
-shellLoop_checkARGS:
-	mov al, 0
-	mov bx, word[shellShare]
-	mov dh, 9
-	int 0x42
 	jmp shellLoop_wait
 
 shellLoop_runError:
@@ -286,6 +276,9 @@ shellDevice:
 	dw 0
 
 shellShare:
+	dw 0
+
+shellStrSize:
 	dw 0
 
 intToStr:

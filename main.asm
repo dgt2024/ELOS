@@ -21,7 +21,7 @@ times 504 - ($ - $$) db 0
 %include "driver/syscall.asm"
 %include "device/device.asm"
 times 512 * 8 - ($ - $$) db 0
-section .program vstart=0x40001000
+section .program vstart=0x40002000
 %include "device/proc.asm"
 times 512 * 2 - ($ - $$) db 0
 section .driver.uart vstart=0x80000000

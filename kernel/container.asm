@@ -1,6 +1,12 @@
 deleteContainer:
 	movzx eax, ax
-	mov word[eax*8+0x20000], 0
+	mov word[eax*8+0x1fff8], 0
+
+	mov ebx, dword[eax*8+0x1fffc]
+	movzx ax, bh ; ADDR | SIZE | FLAGS | FLAGS
+	and bx, 0xf000
+	and al, 0x0f
+	call pageFree
 	ret
 
 registerContainer:

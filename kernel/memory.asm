@@ -54,7 +54,7 @@ pageAllocate_error:
 	ret
 
 pageFree:
-	and al, 0x0f
+	and al, 0x0f ; limit to 16 pages (65KiB)
 	movzx ecx, al
 	inc ecx
 
@@ -67,7 +67,7 @@ pageFree:
 	shr ebx, 12 ; calculate bit
 
 pageFree_clrloop:
-	bts dword[0x1c0000], ebx
+	btr dword[0x1c0000], ebx
 	inc ebx
 	loop pageFree_clrloop
 	ret

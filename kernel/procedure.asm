@@ -48,8 +48,8 @@ createProcedure:
 	pop ax ; code container HNDL
 	call getRawContainer
 
-	mov dword[edi+0xc], 0x40000ffc ; PDHNDL->ESP
-	mov dword[edi+0x20], 0x40001000 ; PDHNDL->EIP
+	mov dword[edi+0xc], 0x40001ffc ; PDHNDL->ESP
+	mov dword[edi+0x20], 0x40002000 ; PDHNDL->EIP
 	mov dword[edi+0x24], 0x1202 ; PDHNDL->EFLAGS
 
 	inc dword[0x608]
@@ -113,7 +113,10 @@ createProcedure_noClamp:
 	mov bx, dx
 
 	push dx
+	push ax
 	call giveContainer
+	pop ax
+	call mapContainer
 	pop dx
 
 	pop ax ; Link HNDL code to PDHNDL
@@ -149,13 +152,6 @@ createProcedure_noClamp:
 	pop edx
 
 	ret
-
-endProcedure:
-	movzx edi, word[0x610]
-	lea edi, [edi-0x8000]
-	neg edi
-	mov word[0x10002+edi*2], 0
-	jmp yieldScheduler
 
 registerProcedure:
 	mov esi, 0x10000

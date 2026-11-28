@@ -87,7 +87,7 @@ kernelABIDriverR0_lookup:
 kernelABIPriviledge:
 	inc dword[0x680]
 
-	mov byte[0x200032], 0x38 ; last syscall #
+	mov byte[0x200032], 0x42 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
 
@@ -112,7 +112,7 @@ kernelABIPriviledge_lookup:
 kernelABIPriviledgeR0:
 	inc dword[0x680]
 
-	mov byte[0x200032], 0x39 ; last syscall #
+	mov byte[0x200032], 0x43 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
 

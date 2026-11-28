@@ -47,6 +47,7 @@ IRQCall_switch:
 
 IRQCall_return:
 	cli
+	inc dword[0x680]
 	mov word[0x504], 0x7800
 
 	mov esp, dword[0x614]

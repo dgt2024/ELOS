@@ -47,7 +47,6 @@ out_sendFunc_loop:
 	ret
 
 out_sendFunc_tab:
-	; todo: fix this
 	add dword[out_cursor], 2
 	loop out_sendFunc_loop
 	clc

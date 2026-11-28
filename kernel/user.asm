@@ -29,6 +29,61 @@ userCreateShare:
 	call userAllocate
 	ret
 
+userRequestShare:
+	movzx eax, ax
+
+	cmp word[0x1fff8+eax*8], 0
+	je userRequestShare_err
+
+	cmp word[0x1fffa+eax*8], 0
+	je userRequestShare_map
+
+	mov cx, ax ; cx = data (in this case, CMHNDL)
+	mov ax, word[0x1fffa+eax*8] ; ax = dest (CMHNDL.OWNER)
+	push eax
+	mov bl, 0x01
+	call sendNotification
+	pop eax
+
+	mov cx, word[0x612]
+	mov bl, 0x01
+	call sendNotification
+	ret
+
+userRequestShare_map:
+	cli
+	jmp $
+
+userRequestShare_err:
+	stc
+	ret
+
+; AX=PDHNDL,BL=TYPE,ECX=DATA 24b
+
+userAnswerShare:
+	; AL=0 :D, AL!=0 :(
+	; BX=obj (not necessary if AL!=0)
+	push eax
+	push ebx
+	call readNotification
+	pop ebx
+	pop eax
+
+	cmp al, 0
+	jne userAnswerShare_map
+
+	pushad
+	movzx eax, bx
+	mov bx, cx
+	call mapContainer
+	popad
+
+userAnswerShare_map:
+	xchg eax, ecx ; PDHNDL<->status
+	mov bl, 0x02
+	call sendNotification
+	ret
+
 userSendNotification:
 	mov bl, 0
 	call sendNotification

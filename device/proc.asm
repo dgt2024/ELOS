@@ -120,7 +120,7 @@ listCSVLoop:
 	sti
 
 	mov al, 0
-	mov dh, 4
+	mov dh, 7
 	int 0x42
 
 	mov word[shellShare], dx
@@ -153,6 +153,9 @@ shellLoop:
 
 	cmp bl, 0x10
 	je shellLoop_keyDown
+
+	cmp bl, 0x01
+	je shellLoop_checkARGS
 	jmp shellLoop
 
 shellLoop_keyDown:
@@ -192,12 +195,26 @@ shellLoop_noWrite:
 	pop edi
 	jmp shellLoop
 
-shellLoop_run:
-	inc edi
-	mov byte[edi-1], 0
-	lea ecx, [edi-0x40002000]
+shellLoop_checkARGS:
+	mov al, 0
+	mov bx, word[shellShare]
+	mov dh, 9
+	int 0x42
+	jmp shellLoop
 
+shellLoop_run:
+	mov byte[edi], ' '
+	inc edi
 	push edi
+
+	mov edi, 0x40002000
+	mov al, ' '
+	mov ecx, 0xffffffff
+	repne scasb
+
+	mov byte[edi-1], 0
+
+	not ecx
 	push ecx
 
 	mov eax, "LDFS"
@@ -221,6 +238,8 @@ shellLoop_run:
 	pop ecx
 	pop edi ; pointer to code
 
+	mov byte[edi], 0
+
 	push ecx
 	push edx
 
@@ -240,7 +259,7 @@ shellLoop_run:
 
 	mov ax, dx
 	mov dh, 6
-	mov ecx, "hey"
+	mov cx, word[shellShare]
 	int 0x42
 
 	mov dh, 2

@@ -9,6 +9,8 @@ DWORD		0x60c		Total Allocated Memory
 WORD		0x610		PID
 WORD		0x612		PDHNDL
 DWORD		0x614		Interrupt Handler ESP
+DWORD		0x680		Global Syscall Count
+DWORD		0x684		TSC speed (In KHz)
 BYTE		0x6ff		CPU flags [0:NX]
 WORD		0x700		Interrupt Device
 BYTE		0x702		Interrupt # 
@@ -27,6 +29,11 @@ STRUCT[]	0x100000	Device array
 DWORD[]		0x180000	Driver array	
 STRUCT[]	0x1c0000	KABM
 WORD[]		0x1e0000	Device per-ID array
+
+TODO:
+ - Add page overflow in filesystem
+ - Add real tabbing in device OUT
+ - Add create on unowned containers
 
 Global Functions:
 kernel/memory.asm
@@ -99,7 +106,7 @@ Note: UDHNDLs seen as reserved
 BF -> DR7, 64B means not present
 FL
 0		1		2		3		4		5		6		7		8
-Prvldge	Status	Role	Fatal	Crtion	Static	ObjPvge Share
+Prvldge	Status	Poll	Fatal	Crtion	Static	ObjPvge Share
 BP0E	BP1E	BP2E	BP3E	Reserved
 
 **DVHNDL structure**:
@@ -180,7 +187,8 @@ b3=0: 00|CLASS|SUBCLASS|PROG IF (CLASS IF b2,SUBCLASS IF b1,PROG IF IF b0)
 
 **Notfication Types**
 0x00=IPC
-0x01=SHARE
+0x01=SHARE_REQ
+0x02=SHARE_ANS
 
 0x10=KEY_DOWN
 0x11=KEY_UP

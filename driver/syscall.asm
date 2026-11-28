@@ -24,6 +24,8 @@ kernelABIStart:
 	ret
 
 kernelABIDriver:
+	inc dword[0x680]
+
 	cmp byte[esp+3], 0x80
 	jae kernelABIDriver_cont
 
@@ -63,6 +65,8 @@ kernelABIDriver_lookup:
 	dd readNotification
 
 kernelABIDriverR0:
+	inc dword[0x680]
+
 	cmp byte[esp+3], 0x80
 	jae kernelABIDriverR0_cont
 
@@ -81,6 +85,8 @@ kernelABIDriverR0_lookup:
 	dd userUpdateCR3
 
 kernelABIPriviledge:
+	inc dword[0x680]
+
 	mov byte[0x200032], 0x38 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
@@ -100,8 +106,12 @@ kernelABIPriviledge_lookup:
 	dd readNotification
 	dd userSendNotification
 	dd userCreateShare
+	dd userRequestShare
+	dd userAnswerShare
 
 kernelABIPriviledgeR0:
+	inc dword[0x680]
+
 	mov byte[0x200032], 0x39 ; last syscall #
 	mov byte[0x200033], dh ; last syscall function
 	inc word[0x200036] ; syscall count
